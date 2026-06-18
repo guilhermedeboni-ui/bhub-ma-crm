@@ -436,7 +436,7 @@ async function doSignup() {
     err.textContent = 'Preencha todos os campos. Senha mínima: 6 caracteres.';
     err.classList.add('show'); return;
   }
-  const { error } = await sb.auth.signUp({ email, password, options: { data: { full_name: name } } });
+  const { error } = await sb.auth.signUp({ email, password, options: { data: { full_name: name }, emailRedirectTo: window.location.href } });
   if (error) { err.textContent = error.message; err.classList.add('show'); }
   else { toast('Conta criada! Verifique seu e-mail para confirmar.'); toggleAuthMode(false); }
 }
