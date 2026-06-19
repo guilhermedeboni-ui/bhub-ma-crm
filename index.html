@@ -1275,16 +1275,38 @@ async function deleteHistory(dealId, idx) {
 function editActivity(dealId, actId) {
   const d = deals.find(x=>x.id===dealId); if(!d)return;
   const a = d.activities.find(x=>x.id===actId); if(!a)return;
-  const itemEl = document.querySelector(`[data-act-id="${actId}"]`);
+  const itemEl = document.querySelector('[data-act-id="'+actId+'"]');
   if (!itemEl) return;
-  itemEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:7px;width:100%">
-    <input id="edit-act-title-${actId}" value="${a.title}" style="font-size:13px;padding:6px 9px" placeholder="Título"/>
-    <input type="date" id="edit-act-date-${actId}" value="${a.date||''}" style="font-size:13px;padding:6px 9px;cursor:pointer;width:100%" onclick="this.showPicker&&this.showPicker()"/>
-    <div style="display:flex;gap:7px">
-      <button onclick="saveEditActivity(${JSON.stringify(dealId)},${JSON.stringify(actId)})" style="background:var(--brand);border:none;color:#fff;font-size:12px;font-weight:600;font-family:var(--font);padding:6px 14px;border-radius:var(--radius);cursor:pointer">Salvar</button>
-      <button onclick="cancelEditActivity(this)" style="background:none;border:1px solid var(--border-md);color:var(--text-2);font-size:12px;font-weight:600;font-family:var(--font);padding:6px 14px;border-radius:var(--radius);cursor:pointer">Cancelar</button>
-    </div>
-  </div>`;
+  const titleInput = document.createElement('input');
+  titleInput.id = 'edit-act-title-'+actId;
+  titleInput.value = a.title;
+  titleInput.style.cssText = 'font-size:13px;padding:6px 9px;border:1px solid var(--border-md);border-radius:var(--radius);outline:none;width:100%';
+  titleInput.placeholder = 'Título';
+  const dateInput = document.createElement('input');
+  dateInput.type = 'date';
+  dateInput.id = 'edit-act-date-'+actId;
+  dateInput.value = a.date||'';
+  dateInput.style.cssText = 'font-size:13px;padding:6px 9px;cursor:pointer;width:100%;border:1px solid var(--border-md);border-radius:var(--radius);outline:none';
+  dateInput.onclick = function(){ this.showPicker&&this.showPicker(); };
+  const btnSave = document.createElement('button');
+  btnSave.textContent = 'Salvar';
+  btnSave.style.cssText = 'background:var(--brand);border:none;color:#fff;font-size:12px;font-weight:600;font-family:var(--font);padding:6px 14px;border-radius:var(--radius);cursor:pointer';
+  btnSave.onclick = function(){ saveEditActivity(dealId, actId); };
+  const btnCancel = document.createElement('button');
+  btnCancel.textContent = 'Cancelar';
+  btnCancel.style.cssText = 'background:none;border:1px solid var(--border-md);color:var(--text-2);font-size:12px;font-weight:600;font-family:var(--font);padding:6px 14px;border-radius:var(--radius);cursor:pointer';
+  btnCancel.onclick = function(){ cancelEditActivity(this); };
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:7px';
+  btnRow.appendChild(btnSave);
+  btnRow.appendChild(btnCancel);
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;gap:7px;width:100%';
+  wrap.appendChild(titleInput);
+  wrap.appendChild(dateInput);
+  wrap.appendChild(btnRow);
+  itemEl.innerHTML = '';
+  itemEl.appendChild(wrap);
 }
 
 function cancelEditActivity(btn) {
