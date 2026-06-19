@@ -536,10 +536,13 @@ const sb = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 const DEFAULT_STAGES = ['Prospecção','Reunião','NDA','Análise de Viabilidade','Proposta','Diligência','Contrato','Ganho','Perdido'];
 const DEFAULT_FUNIL = { id: 'default', name: 'M&A', stages: DEFAULT_STAGES };
 
-function getFunis() {
-  try { const v = localStorage.getItem('crm_funis'); return v ? JSON.parse(v) : [DEFAULT_FUNIL]; } catch(e) { return [DEFAULT_FUNIL]; }
+function getFunis() { return funisCache || [DEFAULT_FUNIL]; }
+async function saveFunisStorage(funis) {
+  funisCache = funis;
+  try {
+    await sb.from('crm_config').upsert({ key: 'funis', value: JSON.stringify(funis) }, { onConflict: 'key' });
+  } catch(e) { console.error('saveFunisStorage error', e); }
 }
-function saveFunisStorage(funis) { try { localStorage.setItem('crm_funis', JSON.stringify(funis)); } catch(e) {} }
 function getCurrentFunilId() { return localStorage.getItem('crm_current_funil') || 'default'; }
 function setCurrentFunilId(id) { localStorage.setItem('crm_current_funil', id); }
 function getCurrentFunil() { const funis = getFunis(); return funis.find(f => f.id === getCurrentFunilId()) || funis[0]; }
@@ -572,12 +575,40 @@ const STAGE_COLORS = new Proxy({}, { get: (t, stage) => getStageColor(stage, STA
 const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
 
 const DEFAULTS = {
-  segmentos: ['Agro','Terceiro Setor','Corporate','Geral','Novo'],
+  segmentos: ['Agro','Corporate','Geral','Novo','Terceiro Setor'],
   origens: ['Associado','Evento','Inbound','Indicação','Outbound'],
   origens_detalhadas: []
 };
-function getOpts(key) { try{const v=localStorage.getItem('crm_opts_'+key);return v?JSON.parse(v):DEFAULTS[key]||[];}catch(e){return DEFAULTS[key]||[];} }
-function saveOpts(key,arr) { try{localStorage.setItem('crm_opts_'+key,JSON.stringify(arr));}catch(e){} }
+// In-memory cache for opts and funis (loaded from Supabase)
+let optsCache = {};
+let funisCache = null;
+
+function getOpts(key) { return (optsCache[key] || DEFAULTS[key] || []).slice().sort((a,b)=>a.localeCompare(b,'pt-BR')); }
+
+async function saveOpts(key, arr) {
+  const sorted = arr.slice().sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  optsCache[key] = sorted;
+  try {
+    await sb.from('crm_config').upsert({ key: 'opts_'+key, value: JSON.stringify(sorted) }, { onConflict: 'key' });
+  } catch(e) { console.error('saveOpts error', e); }
+}
+
+async function loadOptsFromDB() {
+  try {
+    const { data } = await sb.from('crm_config').select('*');
+    if (data) {
+      data.forEach(row => {
+        if (row.key.startsWith('opts_')) {
+          const k = row.key.replace('opts_', '');
+          optsCache[k] = JSON.parse(row.value);
+        }
+        if (row.key === 'funis') {
+          funisCache = JSON.parse(row.value);
+        }
+      });
+    }
+  } catch(e) { console.error('loadOptsFromDB error', e); }
+}
 
 let deals=[], currentUser=null, editingDealId=null, crmUsers=[], currentOptsKey=null, draggedDealId=null;
 
@@ -690,7 +721,7 @@ function moveFunilStage(i, dir) {
   renderFunilStagesList();
 }
 
-function saveFunil() {
+async function saveFunil() {
   const name = document.getElementById('funil-name').value.trim();
   if (!name) { toast('Informe o nome do funil.', 'error'); return; }
   if (tempFunilStages.length < 2) { toast('Adicione pelo menos 2 etapas.', 'error'); return; }
@@ -701,7 +732,7 @@ function saveFunil() {
   } else {
     funis.push({ id: 'funil_' + Date.now(), name, stages: tempFunilStages });
   }
-  saveFunisStorage(funis);
+  await saveFunisStorage(funis);
   if (editingFunilId && editingFunilId === getCurrentFunilId()) {
     STAGES = tempFunilStages;
   }
@@ -751,9 +782,12 @@ async function doLogout(){await sb.auth.signOut();}
 
 // ── DATA ──
 async function loadDeals() {
+  await loadOptsFromDB();
   const {data,error}=await sb.from('deals').select('*').order('created_at',{ascending:false});
   if(error){toast('Erro ao carregar dados: '+error.message,'error');return;}
   deals=(data||[]).map(parseDeal);
+  // Reload STAGES from Supabase funil config
+  STAGES = getCurrentFunil().stages;
   await loadCrmUsers(); populateFilters(); render();
 }
 
@@ -781,8 +815,8 @@ async function loadCitiesFromIBGE(uf,citySelectId,selectedCity){const cityEl=doc
 function populateSelectFromOpts(selectId,key,selected){const opts=getOpts(key);const el=document.getElementById(selectId);el.innerHTML='<option value="">Selecione...</option>'+opts.map(o=>`<option value="${o}" ${o===selected?'selected':''}>${o}</option>`).join('');}
 function openManageOpts(key){currentOptsKey=key;const labels={segmentos:'Segmentos',origens:'Origens',origens_detalhadas:'Origens Detalhadas'};document.getElementById('modal-opts-title').textContent='Gerenciar '+labels[key];renderOptsList();document.getElementById('modal-opts').classList.add('open');}
 function renderOptsList(){const opts=getOpts(currentOptsKey);document.getElementById('opts-list').innerHTML=opts.length?opts.map((o,i)=>`<div class="opt-item"><span>${o}</span><button class="btn-del-opt" onclick="removeOpt(${i})"><i class="ti ti-x"></i></button></div>`).join(''):'<p style="font-size:13px;color:var(--text-3);text-align:center;padding:10px">Nenhuma opção.</p>';}
-function addOpt(){const input=document.getElementById('new-opt-input');const val=input.value.trim();if(!val)return;const opts=getOpts(currentOptsKey);if(opts.includes(val)){toast('Opção já existe.','error');return;}opts.push(val);saveOpts(currentOptsKey,opts);input.value='';renderOptsList();refreshFormDropdowns();toast('Opção adicionada!');}
-function removeOpt(i){const opts=getOpts(currentOptsKey);opts.splice(i,1);saveOpts(currentOptsKey,opts);renderOptsList();refreshFormDropdowns();}
+async function addOpt(){const input=document.getElementById('new-opt-input');const val=input.value.trim();if(!val)return;const opts=getOpts(currentOptsKey);if(opts.includes(val)){toast('Opção já existe.','error');return;}opts.push(val);await saveOpts(currentOptsKey,opts);input.value='';renderOptsList();refreshSingleDropdown(currentOptsKey);toast('Opção adicionada!');}function refreshSingleDropdown(key){const map={segmentos:'nf-segment',origens:'nf-origem',origens_detalhadas:'nf-origem-detail'};const id=map[key];if(id){const el=document.getElementById(id);if(el){const cur=el.value;populateSelectFromOpts(id,key,cur);}}if(key==='segmentos'){const fs=document.getElementById('f-segment');const cur=fs.value;fs.innerHTML='<option value="">Todos</option>'+getOpts('segmentos').map(o=>`<option value="${o}" ${o===cur?'selected':''}>${o}</option>`).join('');}}
+async function removeOpt(i){const opts=getOpts(currentOptsKey);opts.splice(i,1);await saveOpts(currentOptsKey,opts);renderOptsList();refreshSingleDropdown(currentOptsKey);}
 function refreshFormDropdowns(){populateSelectFromOpts('nf-segment','segmentos');populateSelectFromOpts('nf-origem','origens');populateSelectFromOpts('nf-origem-detail','origens_detalhadas');const fs=document.getElementById('f-segment');const cur=fs.value;const opts=getOpts('segmentos');fs.innerHTML='<option value="">Todos</option>'+opts.map(o=>`<option value="${o}" ${o===cur?'selected':''}>${o}</option>`).join('');}
 
 // ── SEARCH SYNC ──
@@ -932,95 +966,248 @@ async function changeStage(id,stage){const d=deals.find(x=>x.id===id);if(!d)retu
 async function addHistory(dealId){const d=deals.find(x=>x.id===dealId);if(!d)return;const text=document.getElementById('hist-text-inp').value.trim();if(!text)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text});const ok=await saveDeal(d);if(!ok)return;toast('Interação registrada');renderDetail(d);render();}
 async function addActivity(dealId){const d=deals.find(x=>x.id===dealId);if(!d)return;const title=document.getElementById('act-title-inp').value.trim();if(!title)return;const date=document.getElementById('act-date-inp').value;d.activities.push({id:Date.now(),title,date,done:false});const ok=await saveDeal(d);if(!ok)return;toast('Atividade adicionada');renderDetail(d);render();}
 async function toggleAct(dealId,actId){const d=deals.find(x=>x.id===dealId);if(!d)return;const a=d.activities.find(x=>x.id===actId);if(!a)return;a.done=!a.done;if(a.done)d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:`Atividade concluída: "${a.title}".`});await saveDeal(d);renderDetail(d);render();}
-async function toggleActGlobal(dealId,actId){const d=deals.find(x=>x.id===dealId);if(!d)return;const a=d.activities.find(x=>x.id===actId);if(!a)return;a.done=!a.done;await saveDeal(d);render();renderAllActivities();}
-async function confirmDeleteDeal(id){if(!confirm('Excluir esta oportunidade?'))return;const ok=await deleteDealDB(id);if(!ok)return;deals=deals.filter(x=>x.id!==id);closeModal('modal-detail');toast('Oportunidade excluída');render();}
-async function deleteHistory(dealId,idx){if(!confirm('Excluir este registro?'))return;const d=deals.find(x=>x.id===dealId);if(!d)return;d.history.splice(idx,1);const ok=await saveDeal(d);if(!ok)return;toast('Registro excluído');renderDetail(d);render();}
+async function toggleActGlobal(dealId, actId) {
+  const d = deals.find(x => x.id === dealId); if (!d) return;
+  const a = d.activities.find(x => x.id === actId); if (!a) return;
+  a.done = !a.done;
+  if (a.done) d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:`Atividade concluída: "${a.title}".`});
+  await saveDeal(d);
+  render();
+  const actView = document.getElementById('view-activities');
+  if (actView && actView.style.display !== 'none') renderAllActivities();
+}
 
-function editActivity(dealId,actId){const d=deals.find(x=>x.id===dealId);if(!d)return;const a=d.activities.find(x=>x.id===actId);if(!a)return;const itemEl=document.querySelector(`[data-act-id="${actId}"]`);if(!itemEl)return;itemEl.innerHTML=`<div style="display:flex;flex-direction:column;gap:7px;width:100%"><input id="edit-act-title-${actId}" value="${a.title}" style="font-size:13px;padding:6px 9px" placeholder="Título"/><input type="date" id="edit-act-date-${actId}" value="${a.date||''}" style="font-size:13px;padding:6px 9px;cursor:pointer;width:100%" onclick="this.showPicker&&this.showPicker()"/><div style="display:flex;gap:7px"><button onclick="saveEditActivity(${JSON.stringify(dealId)},${JSON.stringify(actId)})" style="background:var(--brand);border:none;color:#fff;font-size:12px;font-weight:600;font-family:var(--font);padding:6px 14px;border-radius:var(--radius);cursor:pointer">Salvar</button><button onclick="renderDetail(deals.find(x=>x.id===${JSON.stringify(dealId)}))" style="background:none;border:1px solid var(--border-md);color:var(--text-2);font-size:12px;font-weight:600;font-family:var(--font);padding:6px 14px;border-radius:var(--radius);cursor:pointer">Cancelar</button></div></div>`;}
-async function saveEditActivity(dealId,actId){const d=deals.find(x=>x.id===dealId);if(!d)return;const a=d.activities.find(x=>x.id===actId);if(!a)return;const titleEl=document.getElementById(`edit-act-title-${actId}`);const dateEl=document.getElementById(`edit-act-date-${actId}`);if(!titleEl)return;a.title=titleEl.value.trim()||a.title;a.date=dateEl.value||a.date;const ok=await saveDeal(d);if(!ok)return;toast('Atividade atualizada');renderDetail(d);render();}
+// ── DELETE HISTORY ──
+async function deleteHistory(dealId, idx) {
+  if (!confirm('Excluir este registro?')) return;
+  const d = deals.find(x=>x.id===dealId); if(!d)return;
+  d.history.splice(idx, 1);
+  const ok = await saveDeal(d); if(!ok)return;
+  toast('Registro excluído');
+  renderDetail(d); render();
+}
+
+// ── EDIT ACTIVITY ──
+function editActivity(dealId, actId) {
+  const d = deals.find(x=>x.id===dealId); if(!d)return;
+  const a = d.activities.find(x=>x.id===actId); if(!a)return;
+  const itemEl = document.querySelector(`[data-act-id="${actId}"]`);
+  if (!itemEl) return;
+  itemEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:7px;width:100%">
+    <input id="edit-act-title-${actId}" value="${a.title}" style="font-size:13px;padding:6px 9px" placeholder="Título"/>
+    <input type="date" id="edit-act-date-${actId}" value="${a.date||''}" style="font-size:13px;padding:6px 9px;cursor:pointer;width:100%" onclick="this.showPicker&&this.showPicker()"/>
+    <div style="display:flex;gap:7px">
+      <button onclick="saveEditActivity(${JSON.stringify(dealId)},${JSON.stringify(actId)})" style="background:var(--brand);border:none;color:#fff;font-size:12px;font-weight:600;font-family:var(--font);padding:6px 14px;border-radius:var(--radius);cursor:pointer">Salvar</button>
+      <button onclick="renderDetail(deals.find(x=>x.id===${JSON.stringify(dealId)}))" style="background:none;border:1px solid var(--border-md);color:var(--text-2);font-size:12px;font-weight:600;font-family:var(--font);padding:6px 14px;border-radius:var(--radius);cursor:pointer">Cancelar</button>
+    </div>
+  </div>`;
+}
+
+async function saveEditActivity(dealId, actId) {
+  const d = deals.find(x=>x.id===dealId); if(!d)return;
+  const a = d.activities.find(x=>x.id===actId); if(!a)return;
+  const titleEl = document.getElementById(`edit-act-title-${actId}`);
+  const dateEl = document.getElementById(`edit-act-date-${actId}`);
+  if (!titleEl) return;
+  a.title = titleEl.value.trim() || a.title;
+  a.date = dateEl.value || a.date;
+  const ok = await saveDeal(d); if(!ok)return;
+  toast('Atividade atualizada');
+  renderDetail(d); render();
+}
+
+async function confirmDeleteDeal(id) {
+  if (!confirm('Excluir esta oportunidade? Esta ação não pode ser desfeita.')) return;
+  const ok = await deleteDealDB(id); if(!ok)return;
+  deals = deals.filter(x=>x.id!==id);
+  closeModal('modal-detail');
+  toast('Oportunidade excluída');
+  render();
+}
 
 // ── NEW / EDIT DEAL ──
-function populateFunilStages(selectedStage){const sf=document.getElementById('nf-stage-field');sf.innerHTML=STAGES.map(s=>`<option value="${s}" ${s===selectedStage?'selected':''}>${s}</option>`).join('');}
-function openNewDeal(preStage){editingDealId=null;document.getElementById('modal-new-title').textContent='Nova oportunidade';document.getElementById('btn-save-deal').innerHTML='<i class="ti ti-check"></i> Criar oportunidade';['nf-company','nf-mrr','nf-subsegment','nf-notes'].forEach(id=>document.getElementById(id).value='');populateSelectFromOpts('nf-segment','segmentos','');populateSelectFromOpts('nf-origem','origens','');populateSelectFromOpts('nf-origem-detail','origens_detalhadas','');populateFunilStages(preStage||STAGES[0]);populateStates('nf-state');document.getElementById('nf-city').innerHTML='<option value="">Selecione o estado primeiro</option>';populateOwners('nf-owner','');document.getElementById('modal-new').classList.add('open');}
-async function openEditDeal(id){const d=deals.find(x=>x.id===id);if(!d)return;editingDealId=id;document.getElementById('modal-new-title').textContent='Editar oportunidade';document.getElementById('btn-save-deal').innerHTML='<i class="ti ti-check"></i> Salvar alterações';document.getElementById('nf-company').value=d.company||'';document.getElementById('nf-mrr').value=d.mrr||'';document.getElementById('nf-subsegment').value=d.subsegment||'';document.getElementById('nf-notes').value='';populateSelectFromOpts('nf-segment','segmentos',d.segment);populateSelectFromOpts('nf-origem','origens',d.origem);populateSelectFromOpts('nf-origem-detail','origens_detalhadas',d.origem_detail);populateFunilStages(d.stage||STAGES[0]);populateStates('nf-state');document.getElementById('nf-state').value=d.state||'';await loadCitiesFromIBGE(d.state,'nf-city',d.city);populateOwners('nf-owner',d.owner);closeModal('modal-detail');document.getElementById('modal-new').classList.add('open');}
+function populateFunilStages(selectedStage) {
+  const sf = document.getElementById('nf-stage-field');
+  sf.innerHTML = STAGES.map(s=>`<option value="${s}" ${s===selectedStage?'selected':''}>${s}</option>`).join('');
+}
 
-async function saveDealForm(){
-  const company=document.getElementById('nf-company').value.trim();
-  if(!company){toast('Informe o nome da empresa.','error');return;}
-  if(editingDealId){
-    const d=deals.find(x=>x.id===editingDealId);if(!d)return;
-    d.company=company;d.mrr=parseFloat(document.getElementById('nf-mrr').value)||0;d.segment=document.getElementById('nf-segment').value;d.subsegment=document.getElementById('nf-subsegment').value.trim();d.state=document.getElementById('nf-state').value;d.city=document.getElementById('nf-city').value;d.owner=document.getElementById('nf-owner').value;d.origem=document.getElementById('nf-origem').value;d.origem_detail=document.getElementById('nf-origem-detail').value;d.stage=document.getElementById('nf-stage-field').value;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Informações atualizadas.'});
-    const ok=await saveDeal(d);if(!ok)return;await loadCrmUsers();populateFilters();render();closeModal('modal-new');toast('Deal atualizado!');openDeal(editingDealId);
+function openNewDeal(preStage) {
+  editingDealId = null;
+  document.getElementById('modal-new-title').textContent = 'Nova oportunidade';
+  document.getElementById('btn-save-deal').innerHTML = '<i class="ti ti-check"></i> Criar oportunidade';
+  ['nf-company','nf-mrr','nf-subsegment','nf-notes'].forEach(id => document.getElementById(id).value = '');
+  populateSelectFromOpts('nf-segment','segmentos','');
+  populateSelectFromOpts('nf-origem','origens','');
+  populateSelectFromOpts('nf-origem-detail','origens_detalhadas','');
+  populateFunilStages(preStage || STAGES[0]);
+  populateStates('nf-state');
+  document.getElementById('nf-state').value = '';
+  document.getElementById('nf-city').innerHTML = '<option value="">Selecione o estado primeiro</option>';
+  populateOwners('nf-owner', '');
+  document.getElementById('modal-new').classList.add('open');
+}
+
+async function openEditDeal(id) {
+  const d = deals.find(x=>x.id===id); if(!d)return;
+  editingDealId = id;
+  document.getElementById('modal-new-title').textContent = 'Editar oportunidade';
+  document.getElementById('btn-save-deal').innerHTML = '<i class="ti ti-check"></i> Salvar alterações';
+  document.getElementById('nf-company').value = d.company||'';
+  document.getElementById('nf-mrr').value = d.mrr||'';
+  document.getElementById('nf-subsegment').value = d.subsegment||'';
+  document.getElementById('nf-notes').value = '';
+  populateSelectFromOpts('nf-segment','segmentos',d.segment);
+  populateSelectFromOpts('nf-origem','origens',d.origem);
+  populateSelectFromOpts('nf-origem-detail','origens_detalhadas',d.origem_detail);
+  populateFunilStages(d.stage || STAGES[0]);
+  populateStates('nf-state');
+  document.getElementById('nf-state').value = d.state||'';
+  await loadCitiesFromIBGE(d.state, 'nf-city', d.city);
+  populateOwners('nf-owner', d.owner);
+  closeModal('modal-detail');
+  document.getElementById('modal-new').classList.add('open');
+}
+
+async function saveDealForm() {
+  const company = document.getElementById('nf-company').value.trim();
+  if (!company) { toast('Informe o nome da empresa.','error'); return; }
+  if (editingDealId) {
+    const d = deals.find(x=>x.id===editingDealId); if(!d)return;
+    d.company = company;
+    d.mrr = parseFloat(document.getElementById('nf-mrr').value)||0;
+    d.segment = document.getElementById('nf-segment').value;
+    d.subsegment = document.getElementById('nf-subsegment').value.trim();
+    d.state = document.getElementById('nf-state').value;
+    d.city = document.getElementById('nf-city').value;
+    d.owner = document.getElementById('nf-owner').value;
+    d.origem = document.getElementById('nf-origem').value;
+    d.origem_detail = document.getElementById('nf-origem-detail').value;
+    d.stage = document.getElementById('nf-stage-field').value;
+    d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Informações atualizadas.'});
+    const ok = await saveDeal(d); if(!ok)return;
+    await loadCrmUsers(); populateFilters(); render();
+    closeModal('modal-new');
+    toast('Deal atualizado!');
+    openDeal(editingDealId);
   } else {
-    const notes=document.getElementById('nf-notes').value.trim();
-    const deal={company,mrr:parseFloat(document.getElementById('nf-mrr').value)||0,state:document.getElementById('nf-state').value,city:document.getElementById('nf-city').value,segment:document.getElementById('nf-segment').value,subsegment:document.getElementById('nf-subsegment').value.trim(),owner:document.getElementById('nf-owner').value,origem:document.getElementById('nf-origem').value,origem_detail:document.getElementById('nf-origem-detail').value,stage:document.getElementById('nf-stage-field').value,history:notes?[{date:new Date().toLocaleString('pt-BR'),type:'Nota',text:notes}]:[],activities:[],user_id:currentUser.id,funil_id:getCurrentFunilId()};
-    const{data,error}=await sb.from('deals').insert([{...deal,history:JSON.stringify(deal.history),activities:JSON.stringify(deal.activities)}]).select().single();
-    if(error){toast('Erro ao criar: '+error.message,'error');return;}
-    deals.unshift(parseDeal(data));await loadCrmUsers();populateFilters();render();closeModal('modal-new');toast('Oportunidade criada!');
+    const notes = document.getElementById('nf-notes').value.trim();
+    const deal = {
+      company, mrr: parseFloat(document.getElementById('nf-mrr').value)||0,
+      state: document.getElementById('nf-state').value,
+      city: document.getElementById('nf-city').value,
+      segment: document.getElementById('nf-segment').value,
+      subsegment: document.getElementById('nf-subsegment').value.trim(),
+      owner: document.getElementById('nf-owner').value,
+      origem: document.getElementById('nf-origem').value,
+      origem_detail: document.getElementById('nf-origem-detail').value,
+      stage: document.getElementById('nf-stage-field').value,
+      history: notes ? [{date:new Date().toLocaleString('pt-BR'),type:'Nota',text:notes}] : [],
+      activities: [], user_id: currentUser.id, funil_id: getCurrentFunilId()
+    };
+    const {data, error} = await sb.from('deals').insert([{...deal,history:JSON.stringify(deal.history),activities:JSON.stringify(deal.activities)}]).select().single();
+    if (error) { toast('Erro ao criar: '+error.message,'error'); return; }
+    deals.unshift(parseDeal(data));
+    await loadCrmUsers(); populateFilters(); render();
+    closeModal('modal-new');
+    toast('Oportunidade criada!');
   }
 }
 
 // ── EXPORT ──
-function exportXLSX(){
-  if(typeof XLSX === 'undefined'){toast('Erro: biblioteca XLSX não carregada.','error');return;}
-  const fd=getFiltered();
-  const rows=[['Empresa','MRR','Segmento','Sub-segmento','Estado','Município','Responsável','Origem','Origem detalhada','Etapa','Última interação','Atividades pendentes']];
-  fd.forEach(d=>{
-    const lastH=d.history.length?d.history[d.history.length-1].date+' – '+d.history[d.history.length-1].text:'';
-    const pendAct=d.activities.filter(a=>!a.done).map(a=>a.title).join('; ');
+function exportXLSX() {
+  if (typeof XLSX === 'undefined') { toast('Erro: biblioteca XLSX não carregada.','error'); return; }
+  const fd = getFiltered();
+  const rows = [['Empresa','MRR','Segmento','Sub-segmento','Estado','Município','Responsável','Origem','Origem detalhada','Etapa','Última interação','Atividades pendentes']];
+  fd.forEach(d => {
+    const lastH = d.history.length ? d.history[d.history.length-1].date+' – '+d.history[d.history.length-1].text : '';
+    const pendAct = d.activities.filter(a=>!a.done).map(a=>a.title).join('; ');
     rows.push([d.company,d.mrr||0,d.segment||'',d.subsegment||'',d.state||'',d.city||'',d.owner||'',d.origem||'',d.origem_detail||'',d.stage,lastH,pendAct]);
   });
-  const ws=XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols']=[{wch:30},{wch:12},{wch:15},{wch:20},{wch:8},{wch:20},{wch:20},{wch:15},{wch:20},{wch:20},{wch:50},{wch:40}];
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'Pipeline');
-  XLSX.writeFile(wb,'bhub_ma_pipeline_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:30},{wch:12},{wch:15},{wch:20},{wch:8},{wch:20},{wch:20},{wch:15},{wch:20},{wch:20},{wch:50},{wch:40}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Pipeline');
+  XLSX.writeFile(wb, 'bhub_ma_pipeline_'+new Date().toISOString().slice(0,10)+'.xlsx');
   toast('Excel exportado!');
 }
 
-function exportCSV(){const fd=getFiltered();const rows=[['Empresa','MRR','Segmento','Sub-segmento','Estado','Município','Responsável','Origem','Origem detalhada','Etapa','Última interação','Atividades pendentes']];fd.forEach(d=>{const lastH=d.history.length?d.history[d.history.length-1].date+' – '+d.history[d.history.length-1].text:'';const pendAct=d.activities.filter(a=>!a.done).map(a=>a.title).join('; ');rows.push([d.company,d.mrr||'',d.segment||'',d.subsegment||'',d.state||'',d.city||'',d.owner||'',d.origem||'',d.origem_detail||'',d.stage,lastH,pendAct]);});const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='bhub_ma_pipeline_'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);toast('CSV exportado!');}
-
-function setView(v){
-  document.getElementById('view-pipeline').style.display=v==='pipeline'?'block':'none';
-  document.getElementById('view-activities').style.display=v==='activities'?'block':'none';
-  document.getElementById('nav-pipeline').classList.toggle('active',v==='pipeline');
-  document.getElementById('nav-activities').classList.toggle('active',v==='activities');
-  document.getElementById('page-title').textContent=v==='pipeline'?'Pipeline M&A':'Atividades';
-  if(v==='activities')renderAllActivities();
-}
-
-function closeModal(id){document.getElementById(id).classList.remove('open');}
-
-function render(){
-  renderKanban();
-  const today=new Date().toISOString().slice(0,10);
-  const urgentActs=deals.reduce((s,d)=>s+d.activities.filter(a=>!a.done&&a.date&&a.date<=today).length,0);
-  const b=document.getElementById('act-badge');
-  if(urgentActs>0){b.style.display='inline';b.textContent=urgentActs;}else b.style.display='none';
-}
-
-document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});});
-
-async function init(){
-  initApp();
-  if(!window.SUPABASE_URL||window.SUPABASE_URL==='COLE_SUA_SUPABASE_URL_AQUI'){document.getElementById('loading-screen').style.display='none';document.getElementById('app').style.display='flex';deals=[];render();return;}
-  if(window.location.hash&&window.location.hash.includes('access_token')){await sb.auth.getSession();window.location.hash='';}
-  sb.auth.onAuthStateChange(async(event,session)=>{
-    if(event==='SIGNED_IN'&&session){currentUser=session.user;document.getElementById('loading-screen').style.display='none';document.getElementById('auth-screen').style.display='none';showApp();}
-    else if(event==='SIGNED_OUT'){currentUser=null;deals=[];document.getElementById('app').style.display='none';document.getElementById('loading-screen').style.display='none';document.getElementById('auth-screen').style.display='flex';}
+function exportCSV() {
+  const fd = getFiltered();
+  const rows = [['Empresa','MRR','Segmento','Sub-segmento','Estado','Município','Responsável','Origem','Origem detalhada','Etapa','Última interação','Atividades pendentes']];
+  fd.forEach(d => {
+    const lastH = d.history.length ? d.history[d.history.length-1].date+' – '+d.history[d.history.length-1].text : '';
+    const pendAct = d.activities.filter(a=>!a.done).map(a=>a.title).join('; ');
+    rows.push([d.company,d.mrr||'',d.segment||'',d.subsegment||'',d.state||'',d.city||'',d.owner||'',d.origem||'',d.origem_detail||'',d.stage,lastH,pendAct]);
   });
-  const{data:{session}}=await sb.auth.getSession();
-  if(session){currentUser=session.user;showApp();}
-  else{document.getElementById('loading-screen').style.display='none';document.getElementById('auth-screen').style.display='flex';}
+  const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('
+');
+  const blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download='bhub_ma_pipeline_'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('CSV exportado!');
 }
 
-async function showApp(){
+function setView(v) {
+  document.getElementById('view-pipeline').style.display = v==='pipeline' ? 'block' : 'none';
+  document.getElementById('view-activities').style.display = v==='activities' ? 'block' : 'none';
+  document.getElementById('nav-pipeline').classList.toggle('active', v==='pipeline');
+  document.getElementById('nav-activities').classList.toggle('active', v==='activities');
+  document.getElementById('page-title').textContent = v==='pipeline' ? 'Pipeline M&A' : 'Atividades';
+  if (v==='activities') renderAllActivities();
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function render() {
+  renderKanban();
+  const today = new Date().toISOString().slice(0,10);
+  const urgentActs = deals.reduce((s,d)=>s+d.activities.filter(a=>!a.done&&a.date&&a.date<=today).length, 0);
+  const b = document.getElementById('act-badge');
+  if (urgentActs>0) { b.style.display='inline'; b.textContent=urgentActs; } else b.style.display='none';
+}
+
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target===m) m.classList.remove('open'); });
+});
+
+async function init() {
+  initApp();
+  if (!window.SUPABASE_URL || window.SUPABASE_URL==='COLE_SUA_SUPABASE_URL_AQUI') {
+    document.getElementById('loading-screen').style.display='none';
+    document.getElementById('app').style.display='flex';
+    deals=[]; render(); return;
+  }
+  if (window.location.hash && window.location.hash.includes('access_token')) {
+    await sb.auth.getSession(); window.location.hash='';
+  }
+  sb.auth.onAuthStateChange(async(event, session) => {
+    if (event==='SIGNED_IN' && session) {
+      currentUser = session.user;
+      document.getElementById('loading-screen').style.display='none';
+      document.getElementById('auth-screen').style.display='none';
+      showApp();
+    } else if (event==='SIGNED_OUT') {
+      currentUser=null; deals=[];
+      document.getElementById('app').style.display='none';
+      document.getElementById('loading-screen').style.display='none';
+      document.getElementById('auth-screen').style.display='flex';
+    }
+  });
+  const {data:{session}} = await sb.auth.getSession();
+  if (session) { currentUser=session.user; showApp(); }
+  else { document.getElementById('loading-screen').style.display='none'; document.getElementById('auth-screen').style.display='flex'; }
+}
+
+async function showApp() {
   document.getElementById('loading-screen').style.display='none';
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app').style.display='flex';
-  const name=currentUser.user_metadata?.full_name||currentUser.email;
-  document.getElementById('sb-username').textContent=name;
-  document.getElementById('sb-avatar').textContent=name.charAt(0).toUpperCase();
+  const name = currentUser.user_metadata?.full_name || currentUser.email;
+  document.getElementById('sb-username').textContent = name;
+  document.getElementById('sb-avatar').textContent = name.charAt(0).toUpperCase();
   await loadDeals();
 }
 
