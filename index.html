@@ -880,10 +880,12 @@ function renderOptsList(){
 
 function startEditOpt(i) {
   const opts = getOpts(currentOptsKey);
+  const originalVal = opts[i];
   const item = document.getElementById(`opt-item-${i}`);
   if (!item) return;
+  const safeVal = originalVal.replace(/'/g, "\'").replace(/"/g, '&quot;');
   item.innerHTML = `
-    <input id="edit-opt-input-${i}" value="${opts[i]}" style="flex:1;font-size:13px;padding:4px 8px;border:1px solid var(--border-md);border-radius:var(--radius);outline:none" onkeydown="if(event.key==='Enter')saveEditOpt(${i});if(event.key==='Escape')renderOptsList()"/>
+    <input id="edit-opt-input-${i}" value="${safeVal}" data-original="${safeVal}" style="flex:1;font-size:13px;padding:4px 8px;border:1px solid var(--border-md);border-radius:var(--radius);outline:none" onkeydown="if(event.key==='Enter')saveEditOpt(${i});if(event.key==='Escape')renderOptsList()"/>
     <button onclick="saveEditOpt(${i})" style="background:var(--brand);border:none;color:#fff;font-size:11px;font-weight:600;font-family:var(--font);padding:4px 10px;border-radius:var(--radius);cursor:pointer;margin-left:6px">Salvar</button>
     <button onclick="renderOptsList()" style="background:none;border:1px solid var(--border-md);color:var(--text-2);font-size:11px;font-weight:600;font-family:var(--font);padding:4px 10px;border-radius:var(--radius);cursor:pointer;margin-left:4px">Cancelar</button>`;
   setTimeout(()=>document.getElementById(`edit-opt-input-${i}`)?.focus(),50);
@@ -893,10 +895,17 @@ async function saveEditOpt(i) {
   const input = document.getElementById(`edit-opt-input-${i}`);
   if (!input) return;
   const newVal = input.value.trim();
-  if (!newVal) return;
-  const opts = getOpts(currentOptsKey);
-  opts[i] = newVal;
-  await saveOpts(currentOptsKey, opts);
+  const originalVal = input.dataset.original;
+  if (!newVal || !originalVal) return;
+  // Get raw cache (unsorted) to find and replace the correct value
+  const raw = optsCache[currentOptsKey] || DEFAULTS[currentOptsKey] || [];
+  const idx = raw.indexOf(originalVal);
+  if (idx >= 0) {
+    raw[idx] = newVal;
+  } else {
+    raw.push(newVal); // fallback
+  }
+  await saveOpts(currentOptsKey, raw);
   renderOptsList();
   refreshSingleDropdown(currentOptsKey);
   toast('Opção atualizada!');
