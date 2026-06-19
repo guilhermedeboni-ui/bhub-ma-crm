@@ -240,6 +240,31 @@
     .btn-danger { background: none; border: 1px solid #EF4444; color: #EF4444; font-size: 13px; font-weight: 600; font-family: var(--font); padding: 8px 14px; border-radius: var(--radius); cursor: pointer; display: flex; align-items: center; gap: 5px; transition: .12s; }
     .btn-danger:hover { background: #FEF2F2; }
 
+    /* ── CONTACTS ── */
+    .contact-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; position: relative; }
+    .contact-name { font-size: 14px; font-weight: 600; color: var(--text); }
+    .contact-role { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+    .contact-info { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+    .contact-info-item { font-size: 12px; color: var(--text-2); display: flex; align-items: center; gap: 5px; }
+    .contact-actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 4px; }
+    .btn-icon-sm { background: none; border: none; cursor: pointer; color: var(--text-3); font-size: 14px; padding: 4px; border-radius: 5px; display: flex; align-items: center; transition: .12s; }
+    .btn-icon-sm:hover { background: var(--bg-hover); color: var(--text-2); }
+
+    /* ── PINNED HISTORY ── */
+    .hist-item.pinned { border-left-color: #F59E0B; background: #FFFBEB; }
+    [data-theme="dark"] .hist-item.pinned { background: #1C1A0E; }
+    .hist-pin-badge { font-size: 9px; font-weight: 700; color: #B45309; background: #FEF3C7; padding: 1px 6px; border-radius: 10px; margin-left: 6px; }
+
+    /* ── ACTIVITIES PAGE REDESIGN ── */
+    .acts-toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 14px 20px; border-bottom: 1px solid var(--border); }
+    .acts-period-btn { background: none; border: 1px solid var(--border-md); color: var(--text-2); font-size: 12px; font-weight: 600; font-family: var(--font); padding: 5px 12px; border-radius: 20px; cursor: pointer; transition: .12s; }
+    .acts-period-btn:hover, .acts-period-btn.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+    .acts-table { width: 100%; border-collapse: collapse; }
+    .acts-table th { font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .4px; padding: 10px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+    .acts-table td { font-size: 13px; color: var(--text); padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .acts-table tr:hover td { background: var(--bg-hover); cursor: pointer; }
+    .acts-table tr.done td { opacity: .5; }
+
     /* ── AUTOCOMPLETE ── */
     .autocomplete-wrap { position: relative; width: 100%; }
     .autocomplete-input { width: 100%; }
@@ -416,8 +441,29 @@
         <div class="acts-page">
           <div class="acts-page-header">
             <div class="acts-page-title"><i class="ti ti-calendar-event" style="margin-right:8px;vertical-align:-2px"></i>Atividades</div>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);cursor:pointer">
+              <input type="checkbox" id="show-done-acts" onchange="renderAllActivities()" style="width:auto"> Mostrar concluídas
+            </label>
           </div>
-          <div id="all-activities-list"></div>
+          <div class="acts-toolbar">
+            <button class="acts-period-btn active" id="period-all" onclick="setActsPeriod('all')">Todas</button>
+            <button class="acts-period-btn" id="period-overdue" onclick="setActsPeriod('overdue')">Vencidas</button>
+            <button class="acts-period-btn" id="period-today" onclick="setActsPeriod('today')">Hoje</button>
+            <button class="acts-period-btn" id="period-week" onclick="setActsPeriod('week')">Esta semana</button>
+            <button class="acts-period-btn" id="period-next" onclick="setActsPeriod('next')">Próxima semana</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="acts-table">
+              <thead><tr>
+                <th style="width:40px"></th>
+                <th>Atividade</th>
+                <th>Negócio</th>
+                <th>Data</th>
+                <th>Status</th>
+              </tr></thead>
+              <tbody id="all-activities-list"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -451,6 +497,28 @@
       <div class="form-actions">
         <button class="btn-cancel" onclick="closeModal('modal-funil')">Cancelar</button>
         <button class="btn-save" onclick="saveFunil()"><i class="ti ti-check"></i> <span id="funil-save-label">Criar funil</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONTATO -->
+<div class="modal-overlay" id="modal-contact">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-head">
+      <span class="modal-title" id="modal-contact-title">Adicionar contato</span>
+      <button class="modal-close" onclick="closeModal('modal-contact')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group full"><label>Nome *</label><input id="contact-name" placeholder="Ex: João Silva"/></div>
+        <div class="form-group full"><label>Cargo</label><input id="contact-role" placeholder="Ex: Sócio-fundador"/></div>
+        <div class="form-group"><label>E-mail</label><input id="contact-email" type="email" placeholder="joao@empresa.com"/></div>
+        <div class="form-group"><label>Telefone</label><input id="contact-phone" placeholder="(11) 99999-9999"/></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-cancel" onclick="closeModal('modal-contact')">Cancelar</button>
+        <button class="btn-save" onclick="saveContact()"><i class="ti ti-check"></i> Salvar</button>
       </div>
     </div>
   </div>
@@ -651,7 +719,10 @@ function renderFunilList() {
     <div class="funil-item ${f.id === currentId ? 'active' : ''}" onclick="switchFunil('${f.id}')">
       <i class="ti ti-git-branch" style="font-size:15px"></i>
       <span style="flex:1">${f.name}</span>
-      ${f.id !== 'default' ? `<button onclick="event.stopPropagation();openEditFunil('${f.id}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:13px;padding:2px;display:flex;align-items:center" title="Editar"><i class="ti ti-pencil"></i></button>` : ''}
+      ${f.id !== 'default' ? `
+        <button onclick="event.stopPropagation();openEditFunil('${f.id}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:13px;padding:2px;display:flex;align-items:center" title="Editar"><i class="ti ti-pencil"></i></button>
+        <button onclick="event.stopPropagation();deleteFunil('${f.id}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:13px;padding:2px;display:flex;align-items:center" title="Excluir"><i class="ti ti-trash"></i></button>
+      ` : ''}
     </div>`).join('');
 }
 
@@ -805,8 +876,8 @@ function getDealsForCurrentFunil() {
   const funilId = getCurrentFunilId();
   return deals.filter(d => (d.funil_id || 'default') === funilId);
 }
-function parseDeal(d){return{...d,history:typeof d.history==='string'?JSON.parse(d.history):(d.history||[]),activities:typeof d.activities==='string'?JSON.parse(d.activities):(d.activities||[])};}
-async function saveDeal(deal){const payload={...deal,history:JSON.stringify(deal.history),activities:JSON.stringify(deal.activities)};const{error}=await sb.from('deals').upsert(payload);if(error){toast('Erro ao salvar: '+error.message,'error');return false;}return true;}
+function parseDeal(d){return{...d,history:typeof d.history==='string'?JSON.parse(d.history):(d.history||[]),activities:typeof d.activities==='string'?JSON.parse(d.activities):(d.activities||[]),contacts:typeof d.contacts==='string'?JSON.parse(d.contacts):(d.contacts||[])};}
+async function saveDeal(deal){const payload={...deal,history:JSON.stringify(deal.history),activities:JSON.stringify(deal.activities),contacts:JSON.stringify(deal.contacts||[])};const{error}=await sb.from('deals').upsert(payload);if(error){toast('Erro ao salvar: '+error.message,'error');return false;}return true;}
 async function deleteDealDB(id){const{error}=await sb.from('deals').delete().eq('id',id);if(error){toast('Erro ao excluir: '+error.message,'error');return false;}return true;}
 async function loadCrmUsers(){try{const{data}=await sb.from('deals').select('owner').not('owner','is',null);if(data)crmUsers=[...new Set(data.map(d=>d.owner).filter(Boolean))].sort();}catch(e){}if(currentUser){const name=currentUser.user_metadata?.full_name||currentUser.email;if(name&&!crmUsers.includes(name))crmUsers.unshift(name);}}
 
@@ -906,8 +977,11 @@ async function saveEditOpt(i) {
     raw.push(newVal); // fallback
   }
   await saveOpts(currentOptsKey, raw);
+  await renameOptInDeals(currentOptsKey, originalVal, newVal);
   renderOptsList();
   refreshSingleDropdown(currentOptsKey);
+  populateFilters();
+  render();
   toast('Opção atualizada!');
 }
 async function addOpt(){const input=document.getElementById('new-opt-input');const val=input.value.trim();if(!val)return;const opts=getOpts(currentOptsKey);if(opts.includes(val)){toast('Opção já existe.','error');return;}opts.push(val);await saveOpts(currentOptsKey,opts);input.value='';renderOptsList();refreshSingleDropdown(currentOptsKey);toast('Opção adicionada!');}function refreshSingleDropdown(key){
@@ -1001,27 +1075,67 @@ function renderKanban(){
 }
 
 // ── ALL ACTIVITIES ──
+let currentActsPeriod = 'all';
+
+function setActsPeriod(period) {
+  currentActsPeriod = period;
+  document.querySelectorAll('.acts-period-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('period-'+period);
+  if (btn) btn.classList.add('active');
+  renderAllActivities();
+}
+
+function filterByPeriod(acts, period) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayStr = today.toISOString().slice(0,10);
+  const getMonday = (d) => { const day=d.getDay(); const diff=d.getDate()-day+(day===0?-6:1); return new Date(d.setDate(diff)); };
+  const thisMonday = getMonday(new Date(today)); thisMonday.setHours(0,0,0,0);
+  const thisSunday = new Date(thisMonday); thisSunday.setDate(thisMonday.getDate()+6);
+  const nextMonday = new Date(thisMonday); nextMonday.setDate(thisMonday.getDate()+7);
+  const nextSunday = new Date(thisMonday); nextSunday.setDate(thisMonday.getDate()+13);
+  return acts.filter(a => {
+    if (!a.date) return period === 'all';
+    const d = new Date(a.date+'T00:00:00');
+    if (period === 'all') return true;
+    if (period === 'overdue') return d < today && !a.done;
+    if (period === 'today') return a.date === todayStr;
+    if (period === 'week') return d >= thisMonday && d <= thisSunday;
+    if (period === 'next') return d >= nextMonday && d <= nextSunday;
+    return true;
+  });
+}
+
 function renderAllActivities(){
   const list=document.getElementById('all-activities-list');
-  const all=[];
+  if (!list) return;
+  const showDone = document.getElementById('show-done-acts')?.checked || false;
+  let all=[];
   deals.forEach(d=>d.activities.forEach(a=>all.push({...a,dealId:d.id,dealName:d.company})));
-  all.sort((a,b)=>{if(a.done!==b.done)return a.done?1:-1;return a.date.localeCompare(b.date);});
-  if(!all.length){list.innerHTML=`<div class="empty"><i class="ti ti-calendar-off"></i><p>Nenhuma atividade cadastrada.</p></div>`;return;}
+  if (!showDone) all = all.filter(a => !a.done);
+  all = filterByPeriod(all, currentActsPeriod);
+  all.sort((a,b)=>{ if(a.done!==b.done)return a.done?1:-1; return (a.date||'').localeCompare(b.date||''); });
+  if(!all.length){
+    list.innerHTML=`<tr><td colspan="5"><div class="empty"><i class="ti ti-calendar-off"></i><p>Nenhuma atividade encontrada.</p></div></td></tr>`;
+    return;
+  }
   list.innerHTML=all.map(a=>{
     const od=!a.done&&isOverdue(a.date);
-    return `<div class="act-big-item" onclick="openDeal(${JSON.stringify(a.dealId)})">
-      <div class="act-check ${a.done?'done':''}" onclick="event.stopPropagation();toggleActGlobal(${JSON.stringify(a.dealId)},${JSON.stringify(a.id)})"><i class="ti ti-check"></i></div>
-      <div style="flex:1">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
-          <span style="font-size:14px;font-weight:600;${a.done?'text-decoration:line-through;color:var(--text-3)':''}">${a.title}</span>
-          <span class="act-deal-badge">${a.dealName}</span>
-        </div>
-        <div style="font-size:12px;color:var(--text-3)">
-          <span ${od?'class="overdue"':''}>${fmtDateShort(a.date)}</span>
-          ${od?' · <span class="overdue">VENCIDA</span>':''}${a.done?' · <span style="color:#22C55E;font-weight:600">Concluída</span>':''}
-        </div>
-      </div>
-    </div>`;
+    const today=new Date().toISOString().slice(0,10);
+    const isToday=a.date===today;
+    const statusColor = od?'#EF4444':isToday?'#22C55E':a.done?'#22C55E':'var(--text-3)';
+    const statusText = a.done?'Concluída':od?'Vencida':isToday?'Hoje':'Pendente';
+    return `<tr class="${a.done?'done':''}" onclick="openDeal(${JSON.stringify(a.dealId)})">
+      <td onclick="event.stopPropagation()">
+        <div class="act-check ${a.done?'done':''}" onclick="toggleActGlobal(${JSON.stringify(a.dealId)},${JSON.stringify(a.id)})" style="margin:0 auto"><i class="ti ti-check"></i></div>
+      </td>
+      <td>
+        <div style="font-weight:600;${a.done?'text-decoration:line-through;color:var(--text-3)':''}">${a.title}</div>
+        ${a.comment?`<div style="font-size:11px;color:var(--text-3);margin-top:2px">${a.comment}</div>`:''}
+      </td>
+      <td><span class="act-deal-badge">${a.dealName}</span></td>
+      <td style="white-space:nowrap;${od?'color:#EF4444;font-weight:600':''}">${fmtDateShort(a.date)}</td>
+      <td><span style="font-size:11px;font-weight:600;color:${statusColor}">${statusText}</span></td>
+    </tr>`;
   }).join('');
 }
 
@@ -1030,8 +1144,61 @@ function openDeal(id){currentDealId=id;const d=deals.find(x=>x.id===id);if(!d)re
 
 function renderDetail(d){
   const c=STAGE_COLORS[d.stage];
-  const histHtml=d.history.slice().reverse().map((h,ri)=>{const origIdx=d.history.length-1-ri;return`<div class="hist-item"><div class="hist-meta"><span class="hist-date">${h.date}</span><button onclick="deleteHistory(${JSON.stringify(d.id)},${origIdx})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:2px;display:flex;align-items:center"><i class="ti ti-x"></i></button></div><div class="hist-text">${h.text}</div></div>`;}).join('')||'<p style="font-size:13px;color:var(--text-3)">Nenhum registro.</p>';
-  const actHtml=d.activities.map(a=>{const od=!a.done&&isOverdue(a.date);return`<div class="act-item" data-act-id="${a.id}"><div class="act-check ${a.done?'done':''}" onclick="toggleAct(${JSON.stringify(d.id)},${JSON.stringify(a.id)})"><i class="ti ti-check"></i></div><div style="flex:1"><div class="act-title-txt ${a.done?'done':''}">${a.title}</div><div class="act-meta"><span ${od?'class="overdue"':''}>${fmtDate(a.date)}</span>${od?' · <span class="overdue">VENCIDA</span>':''}</div></div><button onclick="editActivity(${JSON.stringify(d.id)},${JSON.stringify(a.id)})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px;transition:.12s" title="Editar" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='none'"><i class="ti ti-pencil"></i></button></div>`;}).join('')||'<p style="font-size:13px;color:var(--text-3)">Nenhuma atividade.</p>';
+  const contacts = d.contacts || [];
+  const history = d.history || [];
+
+  // Sort history: pinned first, then by date desc
+  const sortedHistory = [...history].map((h,i)=>({...h,_origIdx:i}))
+    .sort((a,b)=>{
+      if(a.pinned && !b.pinned) return -1;
+      if(!a.pinned && b.pinned) return 1;
+      return 0;
+    }).reverse();
+
+  const histHtml = sortedHistory.length ? sortedHistory.map(h=>{
+    const origIdx = h._origIdx;
+    return `<div class="hist-item ${h.pinned?'pinned':''}">
+      <div class="hist-meta">
+        <span class="hist-date">${h.date}</span>
+        ${h.pinned?'<span class="hist-pin-badge">Fixado</span>':''}
+        <div style="display:flex;gap:2px;margin-left:auto">
+          <button onclick="togglePinHistory(${JSON.stringify(d.id)},${origIdx})" style="background:none;border:none;cursor:pointer;color:${h.pinned?'#F59E0B':'var(--text-3)'};font-size:14px;padding:2px;display:flex;align-items:center" title="${h.pinned?'Desafixar':'Fixar'}"><i class="ti ti-pin${h.pinned?'':'-off'}"></i></button>
+          <button onclick="deleteHistory(${JSON.stringify(d.id)},${origIdx})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:2px;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+        </div>
+      </div>
+      <div class="hist-text">${h.text}</div>
+    </div>`;
+  }).join('') : '<p style="font-size:13px;color:var(--text-3)">Nenhum registro.</p>';
+
+  const actHtml = d.activities.map(a=>{
+    const od=!a.done&&isOverdue(a.date);
+    return `<div class="act-item" data-act-id="${a.id}">
+      <div class="act-check ${a.done?'done':''}" onclick="toggleAct(${JSON.stringify(d.id)},${JSON.stringify(a.id)})"><i class="ti ti-check"></i></div>
+      <div style="flex:1">
+        <div class="act-title-txt ${a.done?'done':''}">${a.title}</div>
+        <div class="act-meta"><span ${od?'class="overdue"':''}>${fmtDate(a.date)}</span>${od?' · <span class="overdue">VENCIDA</span>':''}</div>
+        ${a.comment?`<div style="font-size:12px;color:var(--text-2);margin-top:4px;background:var(--bg-card);border-radius:5px;padding:6px 8px;border:1px solid var(--border)">${a.comment}</div>`:''}
+      </div>
+      <div style="display:flex;gap:2px">
+        <button onclick="toggleActivityComment(${JSON.stringify(d.id)},${JSON.stringify(a.id)})" style="background:none;border:none;cursor:pointer;color:${a.comment?'var(--accent)':'var(--text-3)'};font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="Comentário"><i class="ti ti-message"></i></button>
+        <button onclick="editActivity(${JSON.stringify(d.id)},${JSON.stringify(a.id)})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="Editar"><i class="ti ti-pencil"></i></button>
+      </div>
+    </div>`;
+  }).join('') || '<p style="font-size:13px;color:var(--text-3)">Nenhuma atividade.</p>';
+
+  const contactsHtml = contacts.length ? contacts.map((ct,i)=>`
+    <div class="contact-card">
+      <div class="contact-actions">
+        <button class="btn-icon-sm" onclick="openEditContact(${JSON.stringify(d.id)},${i})" title="Editar"><i class="ti ti-pencil"></i></button>
+        <button class="btn-icon-sm" onclick="deleteContact(${JSON.stringify(d.id)},${i})" title="Excluir"><i class="ti ti-trash"></i></button>
+      </div>
+      <div class="contact-name">${ct.name}</div>
+      ${ct.role?`<div class="contact-role">${ct.role}</div>`:''}
+      <div class="contact-info">
+        ${ct.email?`<div class="contact-info-item"><i class="ti ti-mail" style="font-size:13px"></i><a href="mailto:${ct.email}" style="color:var(--text-2);text-decoration:none">${ct.email}</a></div>`:''}
+        ${ct.phone?`<div class="contact-info-item"><i class="ti ti-phone" style="font-size:13px"></i>${ct.phone}</div>`:''}
+      </div>
+    </div>`).join('') : '<p style="font-size:13px;color:var(--text-3);margin-bottom:8px">Nenhum contato cadastrado.</p>';
 
   document.getElementById('detail-modal-body').innerHTML=`
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:12px">
@@ -1054,6 +1221,10 @@ function renderDetail(d){
     <select style="font-weight:600;border-color:${c.bd};color:${c.tx}" onchange="changeStage(${JSON.stringify(d.id)},this.value)">
       ${STAGES.map(s=>`<option value="${s}" ${s===d.stage?'selected':''}>${s}</option>`).join('')}
     </select>
+    <div class="section-title"><i class="ti ti-users" style="font-size:14px"></i>Pontos focais estratégicos
+      <button onclick="openAddContact(${JSON.stringify(d.id)})" style="margin-left:auto;background:none;border:1px solid var(--border-md);color:var(--text-2);font-size:11px;font-weight:600;font-family:var(--font);padding:3px 10px;border-radius:var(--radius);cursor:pointer;display:flex;align-items:center;gap:4px"><i class="ti ti-plus" style="font-size:12px"></i>Adicionar</button>
+    </div>
+    <div id="contacts-list-${d.id}">${contactsHtml}</div>
     <div class="section-title"><i class="ti ti-calendar-event" style="font-size:14px"></i>Atividades</div>
     <div style="background:var(--bg-surface);border-radius:var(--radius);padding:14px;margin-bottom:10px;border:1px solid var(--border)">
       <div class="act-form">
@@ -1073,9 +1244,8 @@ function renderDetail(d){
     <div>${histHtml}</div>
     <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
       <button class="btn-danger" onclick="confirmDeleteDeal(${JSON.stringify(d.id)})"><i class="ti ti-trash"></i> Excluir oportunidade</button>
-    </div>`;
+    </div>\`;
 }
-
 async function changeStage(id,stage){const d=deals.find(x=>x.id===id);if(!d)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:`Etapa alterada para "${stage}".`});d.stage=stage;const ok=await saveDeal(d);if(!ok)return;toast('Etapa atualizada');renderDetail(d);render();}
 async function addHistory(dealId){const d=deals.find(x=>x.id===dealId);if(!d)return;const text=document.getElementById('hist-text-inp').value.trim();if(!text)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text});const ok=await saveDeal(d);if(!ok)return;toast('Interação registrada');renderDetail(d);render();}
 async function addActivity(dealId){const d=deals.find(x=>x.id===dealId);if(!d)return;const title=document.getElementById('act-title-inp').value.trim();if(!title)return;const date=document.getElementById('act-date-inp').value;d.activities.push({id:Date.now(),title,date,done:false});const ok=await saveDeal(d);if(!ok)return;toast('Atividade adicionada');renderDetail(d);render();}
@@ -1226,6 +1396,130 @@ async function saveDealForm() {
     toast('Oportunidade criada!');
   }
 }
+
+// ── RENAME OPT IN DEALS ──
+async function renameOptInDeals(key, oldVal, newVal) {
+  const fieldMap = { segmentos: 'segment', origens: 'origem', origens_detalhadas: 'origem_detail' };
+  const field = fieldMap[key];
+  if (!field) return;
+  const toUpdate = deals.filter(d => d[field] === oldVal);
+  for (const d of toUpdate) {
+    d[field] = newVal;
+    await saveDeal(d);
+  }
+  if (toUpdate.length > 0) toast(`${toUpdate.length} deal(s) atualizados automaticamente.`);
+}
+
+// ── CONTACTS ──
+let editingContactIdx = null;
+let contactDealId = null;
+
+function openAddContact(dealId) {
+  contactDealId = dealId;
+  editingContactIdx = null;
+  document.getElementById('modal-contact-title').textContent = 'Adicionar contato';
+  ['contact-name','contact-role','contact-email','contact-phone'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('modal-contact').classList.add('open');
+}
+
+function openEditContact(dealId, idx) {
+  const d = deals.find(x=>x.id===dealId); if(!d)return;
+  const ct = (d.contacts||[])[idx]; if(!ct)return;
+  contactDealId = dealId;
+  editingContactIdx = idx;
+  document.getElementById('modal-contact-title').textContent = 'Editar contato';
+  document.getElementById('contact-name').value = ct.name||'';
+  document.getElementById('contact-role').value = ct.role||'';
+  document.getElementById('contact-email').value = ct.email||'';
+  document.getElementById('contact-phone').value = ct.phone||'';
+  document.getElementById('modal-contact').classList.add('open');
+}
+
+async function saveContact() {
+  const name = document.getElementById('contact-name').value.trim();
+  if (!name) { toast('Informe o nome do contato.','error'); return; }
+  const d = deals.find(x=>x.id===contactDealId); if(!d)return;
+  if (!d.contacts) d.contacts = [];
+  const ct = {
+    name,
+    role: document.getElementById('contact-role').value.trim(),
+    email: document.getElementById('contact-email').value.trim(),
+    phone: document.getElementById('contact-phone').value.trim(),
+  };
+  if (editingContactIdx !== null) {
+    d.contacts[editingContactIdx] = ct;
+  } else {
+    d.contacts.push(ct);
+  }
+  const ok = await saveDeal(d); if(!ok)return;
+  toast(editingContactIdx !== null ? 'Contato atualizado!' : 'Contato adicionado!');
+  closeModal('modal-contact');
+  renderDetail(d);
+}
+
+async function deleteContact(dealId, idx) {
+  if (!confirm('Excluir este contato?')) return;
+  const d = deals.find(x=>x.id===dealId); if(!d)return;
+  d.contacts.splice(idx, 1);
+  const ok = await saveDeal(d); if(!ok)return;
+  toast('Contato excluído');
+  renderDetail(d);
+}
+
+// ── PIN HISTORY ──
+async function togglePinHistory(dealId, origIdx) {
+  const d = deals.find(x=>x.id===dealId); if(!d)return;
+  const h = d.history[origIdx]; if(!h)return;
+  h.pinned = !h.pinned;
+  const ok = await saveDeal(d); if(!ok)return;
+  renderDetail(d);
+}
+
+// ── ACTIVITY COMMENT ──
+function toggleActivityComment(dealId, actId) {
+  const d = deals.find(x=>x.id===dealId); if(!d)return;
+  const a = d.activities.find(x=>x.id===actId); if(!a)return;
+  const itemEl = document.querySelector(`[data-act-id="${actId}"]`);
+  if (!itemEl) return;
+  // Show comment input inline
+  const commentDiv = itemEl.querySelector('.act-comment-input');
+  if (commentDiv) { commentDiv.remove(); return; }
+  const div = document.createElement('div');
+  div.className = 'act-comment-input';
+  div.style.cssText = 'margin-top:8px;width:100%';
+  div.innerHTML = `<div style="display:flex;gap:6px;align-items:flex-end">
+    <textarea id="comment-inp-${actId}" placeholder="Adicione um comentário..." style="flex:1;min-height:52px;font-size:12px;padding:6px 9px;resize:vertical">${a.comment||''}</textarea>
+    <button onclick="saveActivityComment(${JSON.stringify(dealId)},${JSON.stringify(actId)})" style="background:var(--brand);border:none;color:#fff;font-size:11px;font-weight:600;font-family:var(--font);padding:7px 12px;border-radius:var(--radius);cursor:pointer;white-space:nowrap">Salvar</button>
+  </div>`;
+  itemEl.querySelector('[style*="flex:1"]').appendChild(div);
+  document.getElementById(`comment-inp-${actId}`)?.focus();
+}
+
+async function saveActivityComment(dealId, actId) {
+  const d = deals.find(x=>x.id===dealId); if(!d)return;
+  const a = d.activities.find(x=>x.id===actId); if(!a)return;
+  const inp = document.getElementById(`comment-inp-${actId}`);
+  if (!inp) return;
+  a.comment = inp.value.trim();
+  const ok = await saveDeal(d); if(!ok)return;
+  toast('Comentário salvo!');
+  renderDetail(d);
+}
+
+// ── FUNIL DELETE + REORDER ──
+async function deleteFunil(id) {
+  if (!confirm('Excluir este funil? Os deals associados não serão excluídos.')) return;
+  const funis = getFunis().filter(f => f.id !== id);
+  await saveFunisStorage(funis);
+  if (getCurrentFunilId() === id) {
+    setCurrentFunilId('default');
+    STAGES = getCurrentFunil().stages;
+  }
+  renderFunilList();
+  render();
+  toast('Funil excluído!');
+}
+
 
 // ── EXPORT ──
 function exportXLSX() {
