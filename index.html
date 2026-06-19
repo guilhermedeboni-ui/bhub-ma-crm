@@ -535,6 +535,10 @@ const sb = createClient('https://yrpjmcixnfichiciafgw.supabase.co', 'eyJhbGciOiJ
 const DEFAULT_STAGES = ['Prospecção','Reunião','NDA','Análise de Viabilidade','Proposta','Diligência','Contrato','Ganho','Perdido'];
 const DEFAULT_FUNIL = { id: 'default', name: 'M&A', stages: DEFAULT_STAGES };
 
+// Must be declared before getFunis is called
+let funisCache = null;
+let optsCache = {};
+
 function getFunis() { return funisCache || [DEFAULT_FUNIL]; }
 async function saveFunisStorage(funis) {
   funisCache = funis;
@@ -578,9 +582,7 @@ const DEFAULTS = {
   origens: ['Associado','Evento','Inbound','Indicação','Outbound'],
   origens_detalhadas: []
 };
-// In-memory cache for opts and funis (loaded from Supabase)
-let optsCache = {};
-let funisCache = null;
+// (optsCache and funisCache declared above)
 
 function getOpts(key) { return (optsCache[key] || DEFAULTS[key] || []).slice().sort((a,b)=>a.localeCompare(b,'pt-BR')); }
 
