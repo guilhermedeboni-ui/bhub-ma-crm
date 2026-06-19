@@ -1034,7 +1034,7 @@ function renderKanban(){
     const body=lane.querySelector('.lane-body');
     body.addEventListener('dragover',e=>{e.preventDefault();body.classList.add('drag-over');});
     body.addEventListener('dragleave',()=>body.classList.remove('drag-over'));
-    body.addEventListener('drop',async e=>{e.preventDefault();body.classList.remove('drag-over');if(!draggedDealId)return;const d=deals.find(x=>x.id===draggedDealId);if(!d||d.stage===stage)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:`Etapa alterada para "${stage}".`});d.stage=stage;await saveDeal(d);toast('Etapa atualizada');render();});
+    body.addEventListener('drop',async e=>{e.preventDefault();body.classList.remove('drag-over');if(!draggedDealId)return;const d=deals.find(x=>x.id===draggedDealId);if(!d||d.stage===stage)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Etapa alterada para "'+stage+'".'});d.stage=stage;await saveDeal(d);toast('Etapa atualizada');render();});
     const addBtnTop=document.createElement('div');
     addBtnTop.className='lane-add-btn';
     addBtnTop.style.marginBottom='4px';
@@ -1246,15 +1246,15 @@ function renderDetail(d){
       <button class="btn-danger" onclick="confirmDeleteDeal(${JSON.stringify(d.id)})"><i class="ti ti-trash"></i> Excluir oportunidade</button>
     </div>\`;
 }
-async function changeStage(id,stage){const d=deals.find(x=>x.id===id);if(!d)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:`Etapa alterada para "${stage}".`});d.stage=stage;const ok=await saveDeal(d);if(!ok)return;toast('Etapa atualizada');renderDetail(d);render();}
+async function changeStage(id,stage){const d=deals.find(x=>x.id===id);if(!d)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Etapa alterada para "'+stage+'"'});d.stage=stage;const ok=await saveDeal(d);if(!ok)return;toast('Etapa atualizada');renderDetail(d);render();}
 async function addHistory(dealId){const d=deals.find(x=>x.id===dealId);if(!d)return;const text=document.getElementById('hist-text-inp').value.trim();if(!text)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text});const ok=await saveDeal(d);if(!ok)return;toast('Interação registrada');renderDetail(d);render();}
 async function addActivity(dealId){const d=deals.find(x=>x.id===dealId);if(!d)return;const title=document.getElementById('act-title-inp').value.trim();if(!title)return;const date=document.getElementById('act-date-inp').value;d.activities.push({id:Date.now(),title,date,done:false});const ok=await saveDeal(d);if(!ok)return;toast('Atividade adicionada');renderDetail(d);render();}
-async function toggleAct(dealId,actId){const d=deals.find(x=>x.id===dealId);if(!d)return;const a=d.activities.find(x=>x.id===actId);if(!a)return;a.done=!a.done;if(a.done)d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:`Atividade concluída: "${a.title}".`});await saveDeal(d);renderDetail(d);render();}
+async function toggleAct(dealId,actId){const d=deals.find(x=>x.id===dealId);if(!d)return;const a=d.activities.find(x=>x.id===actId);if(!a)return;a.done=!a.done;if(a.done)d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Atividade concluída: "'+a.title+'".'});await saveDeal(d);renderDetail(d);render();}
 async function toggleActGlobal(dealId, actId) {
   const d = deals.find(x => x.id === dealId); if (!d) return;
   const a = d.activities.find(x => x.id === actId); if (!a) return;
   a.done = !a.done;
-  if (a.done) d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:`Atividade concluída: "${a.title}".`});
+  if (a.done) d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Atividade concluída: "'+a.title+'".'});
   await saveDeal(d);
   render();
   const actView = document.getElementById('view-activities');
