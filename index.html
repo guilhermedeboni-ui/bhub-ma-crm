@@ -952,18 +952,18 @@ function renderOptsList(){
 function startEditOpt(i) {
   const opts = getOpts(currentOptsKey);
   const originalVal = opts[i];
-  const item = document.getElementById(`opt-item-${i}`);
+  const item = document.getElementById('opt-item-'+i);
   if (!item) return;
   const safeVal = originalVal.replace(/'/g, "\'").replace(/"/g, '&quot;');
   item.innerHTML = `
     <input id="edit-opt-input-${i}" value="${safeVal}" data-original="${safeVal}" style="flex:1;font-size:13px;padding:4px 8px;border:1px solid var(--border-md);border-radius:var(--radius);outline:none" onkeydown="if(event.key==='Enter')saveEditOpt(${i});if(event.key==='Escape')renderOptsList()"/>
     <button onclick="saveEditOpt(${i})" style="background:var(--brand);border:none;color:#fff;font-size:11px;font-weight:600;font-family:var(--font);padding:4px 10px;border-radius:var(--radius);cursor:pointer;margin-left:6px">Salvar</button>
     <button onclick="renderOptsList()" style="background:none;border:1px solid var(--border-md);color:var(--text-2);font-size:11px;font-weight:600;font-family:var(--font);padding:4px 10px;border-radius:var(--radius);cursor:pointer;margin-left:4px">Cancelar</button>`;
-  setTimeout(()=>document.getElementById(`edit-opt-input-${i}`)?.focus(),50);
+  setTimeout(()=>document.getElementById('edit-opt-input-'+i)?.focus(),50);
 }
 
 async function saveEditOpt(i) {
-  const input = document.getElementById(`edit-opt-input-${i}`);
+  const input = document.getElementById('edit-opt-input-'+i);
   if (!input) return;
   const newVal = input.value.trim();
   const originalVal = input.dataset.original;
@@ -1320,8 +1320,8 @@ function cancelEditActivity(btn) {
 async function saveEditActivity(dealId, actId) {
   const d = deals.find(x=>x.id===dealId); if(!d)return;
   const a = d.activities.find(x=>x.id===actId); if(!a)return;
-  const titleEl = document.getElementById(`edit-act-title-${actId}`);
-  const dateEl = document.getElementById(`edit-act-date-${actId}`);
+  const titleEl = document.getElementById('edit-act-title-'+actId);
+  const dateEl = document.getElementById('edit-act-date-'+actId);
   if (!titleEl) return;
   a.title = titleEl.value.trim() || a.title;
   a.date = dateEl.value || a.date;
@@ -1509,7 +1509,7 @@ async function togglePinHistory(dealId, origIdx) {
 function toggleActivityComment(dealId, actId) {
   const d = deals.find(x=>x.id===dealId); if(!d)return;
   const a = d.activities.find(x=>x.id===actId); if(!a)return;
-  const itemEl = document.querySelector(`[data-act-id="${actId}"]`);
+  const itemEl = document.querySelector('[data-act-id="'+actId+'"'];
   if (!itemEl) return;
   // Show comment input inline
   const commentDiv = itemEl.querySelector('.act-comment-input');
@@ -1522,13 +1522,13 @@ function toggleActivityComment(dealId, actId) {
     <button onclick="saveActivityComment(${JSON.stringify(dealId)},${JSON.stringify(actId)})" style="background:var(--brand);border:none;color:#fff;font-size:11px;font-weight:600;font-family:var(--font);padding:7px 12px;border-radius:var(--radius);cursor:pointer;white-space:nowrap">Salvar</button>
   </div>`;
   itemEl.querySelector('[style*="flex:1"]').appendChild(div);
-  document.getElementById(`comment-inp-${actId}`)?.focus();
+  document.getElementById('comment-inp-'+actId)?.focus();
 }
 
 async function saveActivityComment(dealId, actId) {
   const d = deals.find(x=>x.id===dealId); if(!d)return;
   const a = d.activities.find(x=>x.id===actId); if(!a)return;
-  const inp = document.getElementById(`comment-inp-${actId}`);
+  const inp = document.getElementById('comment-inp-'+actId);
   if (!inp) return;
   a.comment = inp.value.trim();
   const ok = await saveDeal(d); if(!ok)return;
