@@ -1282,9 +1282,17 @@ function editActivity(dealId, actId) {
     <input type="date" id="edit-act-date-${actId}" value="${a.date||''}" style="font-size:13px;padding:6px 9px;cursor:pointer;width:100%" onclick="this.showPicker&&this.showPicker()"/>
     <div style="display:flex;gap:7px">
       <button onclick="saveEditActivity(${JSON.stringify(dealId)},${JSON.stringify(actId)})" style="background:var(--brand);border:none;color:#fff;font-size:12px;font-weight:600;font-family:var(--font);padding:6px 14px;border-radius:var(--radius);cursor:pointer">Salvar</button>
-      <button onclick="renderDetail(deals.find(x=>x.id===${JSON.stringify(dealId)}))" style="background:none;border:1px solid var(--border-md);color:var(--text-2);font-size:12px;font-weight:600;font-family:var(--font);padding:6px 14px;border-radius:var(--radius);cursor:pointer">Cancelar</button>
+      <button onclick="cancelEditActivity(this)" style="background:none;border:1px solid var(--border-md);color:var(--text-2);font-size:12px;font-weight:600;font-family:var(--font);padding:6px 14px;border-radius:var(--radius);cursor:pointer">Cancelar</button>
     </div>
   </div>`;
+}
+
+function cancelEditActivity(btn) {
+  const itemEl = btn.closest('[data-act-id]');
+  if (!itemEl) return;
+  const dealId = currentDealId;
+  const d = deals.find(x=>x.id===dealId);
+  if (d) renderDetail(d);
 }
 
 async function saveEditActivity(dealId, actId) {
