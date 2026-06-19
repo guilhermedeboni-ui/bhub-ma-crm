@@ -95,6 +95,12 @@
     .sb-icon-btn { background: none; border: none; cursor: pointer; color: rgba(255,255,255,.35); padding: 5px; border-radius: 6px; font-size: 16px; display: flex; align-items: center; transition: .12s; }
     .sb-icon-btn:hover { background: rgba(255,255,255,.08); color: rgba(255,255,255,.7); }
 
+    /* ── DRAG AND DROP STAGES ── */
+    .stage-drag-item { cursor: grab; transition: opacity .15s, box-shadow .15s; }
+    .stage-drag-item:active { cursor: grabbing; }
+    .stage-drag-item.dragging-stage { opacity: .4; }
+    .stage-drag-item.drag-over-stage { box-shadow: 0 -3px 0 var(--accent); }
+
     /* ── FUNIL SECTION ── */
     .funil-section { padding: 8px 10px 4px; }
     .funil-section-label { font-size: 10px; font-weight: 600; color: rgba(255,255,255,.25); letter-spacing: .8px; text-transform: uppercase; padding: 0 6px 4px; }
@@ -480,11 +486,7 @@
           </div>
         </div>
         <div class="form-group"><label>Etapa do funil</label>
-          <select id="nf-stage-field">
-            <option>Prospecção</option><option>Reunião</option><option>NDA</option>
-            <option>Análise de Viabilidade</option><option>Proposta</option>
-            <option>Diligência</option><option>Contrato</option><option>Ganho</option><option>Perdido</option>
-          </select>
+          <select id="nf-stage-field"></select>
         </div>
         <div class="form-group full"><label>Observações iniciais</label><textarea id="nf-notes" placeholder="Contexto, fonte do lead, primeiras impressões..."></textarea></div>
       </div>
@@ -646,12 +648,29 @@ function openEditFunil(id) {
 function renderFunilStagesList() {
   const list = document.getElementById('funil-stages-list');
   list.innerHTML = tempFunilStages.map((s, i) => `
-    <div style="display:flex;align-items:center;gap:8px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px">
+    <div class="stage-drag-item" draggable="true" data-stage-idx="${i}"
+      style="display:flex;align-items:center;gap:8px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px">
+      <i class="ti ti-grip-vertical" style="color:var(--text-3);font-size:16px;cursor:grab;flex-shrink:0"></i>
       <span style="flex:1;font-size:14px">${s}</span>
-      <button onclick="moveFunilStage(${i},-1)" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:2px" title="Mover acima" ${i===0?'disabled':''} ><i class="ti ti-arrow-up"></i></button>
+      <button onclick="moveFunilStage(${i},-1)" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:2px" title="Mover acima" ${i===0?'disabled':''}><i class="ti ti-arrow-up"></i></button>
       <button onclick="moveFunilStage(${i},1)" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:2px" title="Mover abaixo" ${i===tempFunilStages.length-1?'disabled':''}><i class="ti ti-arrow-down"></i></button>
       <button onclick="removeFunilStage(${i})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:2px" title="Remover"><i class="ti ti-x"></i></button>
     </div>`).join('');
+  // Add drag and drop events
+  let dragIdx = null;
+  list.querySelectorAll('.stage-drag-item').forEach(el => {
+    el.addEventListener('dragstart', e => { dragIdx = parseInt(el.dataset.stageIdx); el.classList.add('dragging-stage'); e.dataTransfer.effectAllowed = 'move'; });
+    el.addEventListener('dragend', () => { el.classList.remove('dragging-stage'); list.querySelectorAll('.stage-drag-item').forEach(e => e.classList.remove('drag-over-stage')); });
+    el.addEventListener('dragover', e => { e.preventDefault(); list.querySelectorAll('.stage-drag-item').forEach(e => e.classList.remove('drag-over-stage')); el.classList.add('drag-over-stage'); });
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      const toIdx = parseInt(el.dataset.stageIdx);
+      if (dragIdx === null || dragIdx === toIdx) return;
+      const [moved] = tempFunilStages.splice(dragIdx, 1);
+      tempFunilStages.splice(toIdx, 0, moved);
+      renderFunilStagesList();
+    });
+  });
 }
 
 function addFunilStage() {
@@ -737,6 +756,11 @@ async function loadDeals() {
   deals=(data||[]).map(parseDeal);
   await loadCrmUsers(); populateFilters(); render();
 }
+
+function getDealsForCurrentFunil() {
+  const funilId = getCurrentFunilId();
+  return deals.filter(d => (d.funil_id || 'default') === funilId);
+}
 function parseDeal(d){return{...d,history:typeof d.history==='string'?JSON.parse(d.history):(d.history||[]),activities:typeof d.activities==='string'?JSON.parse(d.activities):(d.activities||[])};}
 async function saveDeal(deal){const payload={...deal,history:JSON.stringify(deal.history),activities:JSON.stringify(deal.activities)};const{error}=await sb.from('deals').upsert(payload);if(error){toast('Erro ao salvar: '+error.message,'error');return false;}return true;}
 async function deleteDealDB(id){const{error}=await sb.from('deals').delete().eq('id',id);if(error){toast('Erro ao excluir: '+error.message,'error');return false;}return true;}
@@ -765,7 +789,7 @@ function refreshFormDropdowns(){populateSelectFromOpts('nf-segment','segmentos')
 function syncSearch(){const sb=document.getElementById('sb-search').value;const gs=document.getElementById('f-search').value;if(document.activeElement===document.getElementById('sb-search'))document.getElementById('f-search').value=sb;else document.getElementById('sb-search').value=gs;render();}
 
 // ── FILTERS ──
-function getFiltered(){const q=document.getElementById('f-search').value.toLowerCase();const fs=document.getElementById('f-stage').value;const fg=document.getElementById('f-segment').value;const fo=document.getElementById('f-owner').value;const fst=document.getElementById('f-state').value;return deals.filter(d=>{const search=[d.company,d.city,d.owner,d.subsegment,d.segment,d.origem,d.origem_detail].filter(Boolean).join(' ').toLowerCase();return(!q||search.includes(q))&&(!fs||d.stage===fs)&&(!fg||d.segment===fg)&&(!fo||d.owner===fo)&&(!fst||d.state===fst);});}
+function getFiltered(){const q=document.getElementById('f-search').value.toLowerCase();const fs=document.getElementById('f-stage').value;const fg=document.getElementById('f-segment').value;const fo=document.getElementById('f-owner').value;const fst=document.getElementById('f-state').value;const funilId=getCurrentFunilId();return deals.filter(d=>{const search=[d.company,d.city,d.owner,d.subsegment,d.segment,d.origem,d.origem_detail].filter(Boolean).join(' ').toLowerCase();return(d.funil_id||'default')===funilId&&(!q||search.includes(q))&&(!fs||d.stage===fs)&&(!fg||d.segment===fg)&&(!fo||d.owner===fo)&&(!fst||d.state===fst);});}
 function populateFilters(){const owners=[...new Set(deals.map(d=>d.owner).filter(Boolean))].sort();const states=[...new Set(deals.map(d=>d.state).filter(Boolean))].sort();const fEl=(id,cur,opts)=>{const el=document.getElementById(id);const first=el.options[0].outerHTML;el.innerHTML=first+opts.map(o=>`<option value="${o}">${o}</option>`).join('');el.value=cur;};fEl('f-owner',document.getElementById('f-owner').value,owners);fEl('f-state',document.getElementById('f-state').value,states);fEl('f-stage',document.getElementById('f-stage').value,STAGES);renderFunilList();refreshFormDropdowns();}
 function populateOwners(selectId,selected){const el=document.getElementById(selectId);el.innerHTML='<option value="">Selecione...</option>'+crmUsers.map(u=>`<option value="${u}" ${u===selected?'selected':''}>${u}</option>`).join('');}
 function clearFilters(){['f-search','f-stage','f-segment','f-owner','f-state'].forEach(id=>document.getElementById(id).value='');document.getElementById('sb-search').value='';render();}
@@ -916,8 +940,9 @@ function editActivity(dealId,actId){const d=deals.find(x=>x.id===dealId);if(!d)r
 async function saveEditActivity(dealId,actId){const d=deals.find(x=>x.id===dealId);if(!d)return;const a=d.activities.find(x=>x.id===actId);if(!a)return;const titleEl=document.getElementById(`edit-act-title-${actId}`);const dateEl=document.getElementById(`edit-act-date-${actId}`);if(!titleEl)return;a.title=titleEl.value.trim()||a.title;a.date=dateEl.value||a.date;const ok=await saveDeal(d);if(!ok)return;toast('Atividade atualizada');renderDetail(d);render();}
 
 // ── NEW / EDIT DEAL ──
-function openNewDeal(preStage){editingDealId=null;document.getElementById('modal-new-title').textContent='Nova oportunidade';document.getElementById('btn-save-deal').innerHTML='<i class="ti ti-check"></i> Criar oportunidade';['nf-company','nf-mrr','nf-subsegment','nf-notes'].forEach(id=>document.getElementById(id).value='');populateSelectFromOpts('nf-segment','segmentos','');populateSelectFromOpts('nf-origem','origens','');populateSelectFromOpts('nf-origem-detail','origens_detalhadas','');document.getElementById('nf-stage-field').value=preStage||'Prospecção';populateStates('nf-state');document.getElementById('nf-city').innerHTML='<option value="">Selecione o estado primeiro</option>';populateOwners('nf-owner','');document.getElementById('modal-new').classList.add('open');}
-async function openEditDeal(id){const d=deals.find(x=>x.id===id);if(!d)return;editingDealId=id;document.getElementById('modal-new-title').textContent='Editar oportunidade';document.getElementById('btn-save-deal').innerHTML='<i class="ti ti-check"></i> Salvar alterações';document.getElementById('nf-company').value=d.company||'';document.getElementById('nf-mrr').value=d.mrr||'';document.getElementById('nf-subsegment').value=d.subsegment||'';document.getElementById('nf-notes').value='';populateSelectFromOpts('nf-segment','segmentos',d.segment);populateSelectFromOpts('nf-origem','origens',d.origem);populateSelectFromOpts('nf-origem-detail','origens_detalhadas',d.origem_detail);document.getElementById('nf-stage-field').value=d.stage||'Prospecção';populateStates('nf-state');document.getElementById('nf-state').value=d.state||'';await loadCitiesFromIBGE(d.state,'nf-city',d.city);populateOwners('nf-owner',d.owner);closeModal('modal-detail');document.getElementById('modal-new').classList.add('open');}
+function populateFunilStages(selectedStage){const sf=document.getElementById('nf-stage-field');sf.innerHTML=STAGES.map(s=>`<option value="${s}" ${s===selectedStage?'selected':''}>${s}</option>`).join('');}
+function openNewDeal(preStage){editingDealId=null;document.getElementById('modal-new-title').textContent='Nova oportunidade';document.getElementById('btn-save-deal').innerHTML='<i class="ti ti-check"></i> Criar oportunidade';['nf-company','nf-mrr','nf-subsegment','nf-notes'].forEach(id=>document.getElementById(id).value='');populateSelectFromOpts('nf-segment','segmentos','');populateSelectFromOpts('nf-origem','origens','');populateSelectFromOpts('nf-origem-detail','origens_detalhadas','');populateFunilStages(preStage||STAGES[0]);populateStates('nf-state');document.getElementById('nf-city').innerHTML='<option value="">Selecione o estado primeiro</option>';populateOwners('nf-owner','');document.getElementById('modal-new').classList.add('open');}
+async function openEditDeal(id){const d=deals.find(x=>x.id===id);if(!d)return;editingDealId=id;document.getElementById('modal-new-title').textContent='Editar oportunidade';document.getElementById('btn-save-deal').innerHTML='<i class="ti ti-check"></i> Salvar alterações';document.getElementById('nf-company').value=d.company||'';document.getElementById('nf-mrr').value=d.mrr||'';document.getElementById('nf-subsegment').value=d.subsegment||'';document.getElementById('nf-notes').value='';populateSelectFromOpts('nf-segment','segmentos',d.segment);populateSelectFromOpts('nf-origem','origens',d.origem);populateSelectFromOpts('nf-origem-detail','origens_detalhadas',d.origem_detail);populateFunilStages(d.stage||STAGES[0]);populateStates('nf-state');document.getElementById('nf-state').value=d.state||'';await loadCitiesFromIBGE(d.state,'nf-city',d.city);populateOwners('nf-owner',d.owner);closeModal('modal-detail');document.getElementById('modal-new').classList.add('open');}
 
 async function saveDealForm(){
   const company=document.getElementById('nf-company').value.trim();
@@ -928,7 +953,7 @@ async function saveDealForm(){
     const ok=await saveDeal(d);if(!ok)return;await loadCrmUsers();populateFilters();render();closeModal('modal-new');toast('Deal atualizado!');openDeal(editingDealId);
   } else {
     const notes=document.getElementById('nf-notes').value.trim();
-    const deal={company,mrr:parseFloat(document.getElementById('nf-mrr').value)||0,state:document.getElementById('nf-state').value,city:document.getElementById('nf-city').value,segment:document.getElementById('nf-segment').value,subsegment:document.getElementById('nf-subsegment').value.trim(),owner:document.getElementById('nf-owner').value,origem:document.getElementById('nf-origem').value,origem_detail:document.getElementById('nf-origem-detail').value,stage:document.getElementById('nf-stage-field').value,history:notes?[{date:new Date().toLocaleString('pt-BR'),type:'Nota',text:notes}]:[],activities:[],user_id:currentUser.id};
+    const deal={company,mrr:parseFloat(document.getElementById('nf-mrr').value)||0,state:document.getElementById('nf-state').value,city:document.getElementById('nf-city').value,segment:document.getElementById('nf-segment').value,subsegment:document.getElementById('nf-subsegment').value.trim(),owner:document.getElementById('nf-owner').value,origem:document.getElementById('nf-origem').value,origem_detail:document.getElementById('nf-origem-detail').value,stage:document.getElementById('nf-stage-field').value,history:notes?[{date:new Date().toLocaleString('pt-BR'),type:'Nota',text:notes}]:[],activities:[],user_id:currentUser.id,funil_id:getCurrentFunilId()};
     const{data,error}=await sb.from('deals').insert([{...deal,history:JSON.stringify(deal.history),activities:JSON.stringify(deal.activities)}]).select().single();
     if(error){toast('Erro ao criar: '+error.message,'error');return;}
     deals.unshift(parseDeal(data));await loadCrmUsers();populateFilters();render();closeModal('modal-new');toast('Oportunidade criada!');
