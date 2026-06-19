@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -43,6 +44,28 @@
     .sidebar { width: var(--sidebar-w); background: var(--sidebar-bg); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 200; transition: width .2s; }
     .main-area { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; min-width: 0; }
 
+    /* ── SIDEBAR COLLAPSED ── */
+    :root { --sidebar-w-collapsed: 60px; }
+    .sidebar.collapsed { width: var(--sidebar-w-collapsed); }
+    .sidebar.collapsed .sb-logo-text,
+    .sidebar.collapsed .sb-search,
+    .sidebar.collapsed .sb-nav-label,
+    .sidebar.collapsed .sb-nav-item span,
+    .sidebar.collapsed .sb-badge,
+    .sidebar.collapsed .sb-user-name,
+    .sidebar.collapsed .sb-actions,
+    .sidebar.collapsed .funil-section { display: none; }
+    .sidebar.collapsed .sb-header { padding: 16px 12px; justify-content: center; display: flex; }
+    .sidebar.collapsed .sb-logo { justify-content: center; }
+    .sidebar.collapsed .sb-nav { padding: 8px 8px; }
+    .sidebar.collapsed .sb-nav-item { justify-content: center; padding: 10px; }
+    .sidebar.collapsed .sb-nav-item i { margin: 0; }
+    .sidebar.collapsed .sb-footer { padding: 10px 8px; }
+    .sidebar.collapsed .sb-user { justify-content: center; padding: 8px 0; }
+    .sidebar.collapsed .sb-toggle-btn { justify-content: center; }
+    .main-area { transition: margin-left .2s; }
+    .main-area.collapsed { margin-left: var(--sidebar-w-collapsed); }
+
     /* ── SIDEBAR ── */
     .sb-header { padding: 20px 16px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); }
     .sb-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
@@ -71,6 +94,16 @@
     .sb-actions { display: flex; gap: 4px; }
     .sb-icon-btn { background: none; border: none; cursor: pointer; color: rgba(255,255,255,.35); padding: 5px; border-radius: 6px; font-size: 16px; display: flex; align-items: center; transition: .12s; }
     .sb-icon-btn:hover { background: rgba(255,255,255,.08); color: rgba(255,255,255,.7); }
+
+    /* ── FUNIL SECTION ── */
+    .funil-section { padding: 8px 10px 4px; }
+    .funil-section-label { font-size: 10px; font-weight: 600; color: rgba(255,255,255,.25); letter-spacing: .8px; text-transform: uppercase; padding: 0 6px 4px; }
+    .funil-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 7px; color: rgba(255,255,255,.55); font-size: 13px; font-weight: 500; cursor: pointer; transition: .12s; position: relative; }
+    .funil-item:hover { background: rgba(255,255,255,.07); color: rgba(255,255,255,.9); }
+    .funil-item.active { background: rgba(255,71,87,.2); color: #FF4757; font-weight: 600; }
+    .funil-item i { font-size: 16px; flex-shrink: 0; }
+    .funil-add-btn { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 7px; color: rgba(255,255,255,.3); font-size: 12px; font-weight: 500; cursor: pointer; transition: .12s; border: none; background: none; font-family: var(--font); width: 100%; text-align: left; }
+    .funil-add-btn:hover { background: rgba(255,255,255,.05); color: rgba(255,255,255,.6); }
 
     /* ── TOPBAR ── */
     .topbar { background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 0 24px; height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 16px; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow-sm); }
@@ -281,7 +314,7 @@
 <div id="app" class="app-layout" style="display:none">
   <!-- SIDEBAR -->
   <aside class="sidebar">
-    <div class="sb-header">
+    <div class="sb-header" style="display:flex;align-items:center;justify-content:space-between">
       <a class="sb-logo" href="#">
         <div class="sb-logo-mark">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="1" y="4" width="6" height="6" rx="1.2" transform="rotate(-45 4 4)" fill="white"/><rect x="7" y="4" width="6" height="6" rx="1.2" transform="rotate(-45 10 4)" fill="white"/><rect x="1" y="10" width="6" height="6" rx="1.2" transform="rotate(-45 4 10)" fill="white"/><rect x="7" y="10" width="6" height="6" rx="1.2" transform="rotate(-45 10 10)" fill="white"/></svg>
@@ -291,6 +324,7 @@
           <span class="sb-logo-tag">M&A CRM</span>
         </div>
       </a>
+      <button class="sb-icon-btn sb-toggle-btn" onclick="toggleSidebar()" title="Recolher menu" style="margin-left:auto"><i class="ti ti-layout-sidebar-left-collapse" id="sb-toggle-icon"></i></button>
     </div>
     <div class="sb-search">
       <div class="sb-search-wrap">
@@ -298,13 +332,18 @@
         <input class="sb-search-input" type="text" id="sb-search" placeholder="Buscar..." oninput="syncSearch()"/>
       </div>
     </div>
+    <div class="funil-section" id="funil-section">
+      <div class="funil-section-label">Funis</div>
+      <div id="funil-list"></div>
+      <button class="funil-add-btn" onclick="openAddFunil()"><i class="ti ti-plus" style="font-size:14px"></i> <span>Novo funil</span></button>
+    </div>
     <nav class="sb-nav">
       <div class="sb-nav-label">Menu</div>
       <button class="sb-nav-item active" id="nav-pipeline" onclick="setView('pipeline')">
-        <i class="ti ti-layout-kanban"></i> Pipeline
+        <i class="ti ti-layout-kanban"></i> <span>Pipeline</span>
       </button>
       <button class="sb-nav-item" id="nav-activities" onclick="setView('activities')">
-        <i class="ti ti-calendar-event"></i> Atividades
+        <i class="ti ti-calendar-event"></i> <span>Atividades</span>
         <span class="sb-badge" id="act-badge" style="display:none"></span>
       </button>
     </nav>
@@ -331,7 +370,8 @@
         </div>
       </div>
       <div class="topbar-right">
-        <button class="btn-secondary" onclick="exportCSV()"><i class="ti ti-download"></i> Exportar CSV</button>
+        <button class="btn-secondary" onclick="exportXLSX()"><i class="ti ti-file-spreadsheet"></i> Excel</button>
+        <button class="btn-secondary" onclick="exportCSV()"><i class="ti ti-download"></i> CSV</button>
         <button class="btn-secondary" id="btn-toggle-filters" onclick="toggleFilters()"><i class="ti ti-filter"></i> Filtros</button>
         <button class="btn-primary" onclick="openNewDeal()"><i class="ti ti-plus"></i> Nova Deal</button>
       </div>
@@ -373,6 +413,33 @@
 <!-- DELETE ZONE -->
 <div class="delete-zone" id="delete-zone">
   <i class="ti ti-trash" style="font-size:20px"></i> Solte aqui para excluir
+</div>
+
+<!-- MODAL FUNIL -->
+<div class="modal-overlay" id="modal-funil">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-head">
+      <span class="modal-title" id="modal-funil-title">Novo funil</span>
+      <button class="modal-close" onclick="closeModal('modal-funil')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="form-group"><label>Nome do funil *</label><input id="funil-name" placeholder="Ex: M&A 2026"/></div>
+        <div id="funil-stages-section">
+          <div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:8px">Etapas do funil</div>
+          <div id="funil-stages-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
+          <div style="display:flex;gap:7px">
+            <input id="new-stage-input" placeholder="Nome da etapa..." onkeydown="if(event.key==='Enter')addFunilStage()"/>
+            <button class="btn-save" onclick="addFunilStage()" style="padding:8px 14px;white-space:nowrap"><i class="ti ti-plus"></i></button>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-cancel" onclick="closeModal('modal-funil')">Cancelar</button>
+        <button class="btn-save" onclick="saveFunil()"><i class="ti ti-check"></i> <span id="funil-save-label">Criar funil</span></button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL NOVA / EDITAR DEAL -->
@@ -463,8 +530,22 @@
 const { createClient } = supabase;
 const sb = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-const STAGES = ['Prospecção','Reunião','NDA','Análise de Viabilidade','Proposta','Diligência','Contrato','Ganho','Perdido'];
-const STAGE_COLORS = {
+// ── FUNIS ──
+const DEFAULT_STAGES = ['Prospecção','Reunião','NDA','Análise de Viabilidade','Proposta','Diligência','Contrato','Ganho','Perdido'];
+const DEFAULT_FUNIL = { id: 'default', name: 'M&A', stages: DEFAULT_STAGES };
+
+function getFunis() {
+  try { const v = localStorage.getItem('crm_funis'); return v ? JSON.parse(v) : [DEFAULT_FUNIL]; } catch(e) { return [DEFAULT_FUNIL]; }
+}
+function saveFunisStorage(funis) { try { localStorage.setItem('crm_funis', JSON.stringify(funis)); } catch(e) {} }
+function getCurrentFunilId() { return localStorage.getItem('crm_current_funil') || 'default'; }
+function setCurrentFunilId(id) { localStorage.setItem('crm_current_funil', id); }
+function getCurrentFunil() { const funis = getFunis(); return funis.find(f => f.id === getCurrentFunilId()) || funis[0]; }
+
+let STAGES = getCurrentFunil().stages;
+let editingFunilId = null;
+let tempFunilStages = [];
+const STAGE_COLORS_BASE = {
   'Prospecção':             {bg:'#EFF6FF',bd:'#3B82F6',tx:'#1D4ED8'},
   'Reunião':                {bg:'#F5F3FF',bd:'#8B5CF6',tx:'#6D28D9'},
   'NDA':                    {bg:'#FFFBEB',bd:'#F59E0B',tx:'#B45309'},
@@ -475,6 +556,17 @@ const STAGE_COLORS = {
   'Ganho':                  {bg:'#F0FDF4',bd:'#16A34A',tx:'#14532D'},
   'Perdido':                {bg:'#FEF2F2',bd:'#EF4444',tx:'#B91C1C'},
 };
+const COLOR_PALETTE = [
+  {bg:'#EFF6FF',bd:'#3B82F6',tx:'#1D4ED8'},{bg:'#F5F3FF',bd:'#8B5CF6',tx:'#6D28D9'},
+  {bg:'#FFFBEB',bd:'#F59E0B',tx:'#B45309'},{bg:'#F0FDF4',bd:'#22C55E',tx:'#15803D'},
+  {bg:'#FFF7ED',bd:'#F97316',tx:'#C2410C'},{bg:'#FDF2F8',bd:'#EC4899',tx:'#BE185D'},
+  {bg:'#ECFDF5',bd:'#10B981',tx:'#065F46'},{bg:'#F0FDF4',bd:'#16A34A',tx:'#14532D'},
+  {bg:'#FEF2F2',bd:'#EF4444',tx:'#B91C1C'},{bg:'#F0F9FF',bd:'#0EA5E9',tx:'#0369A1'},
+];
+function getStageColor(stage, idx) {
+  return STAGE_COLORS_BASE[stage] || COLOR_PALETTE[idx % COLOR_PALETTE.length];
+}
+const STAGE_COLORS = new Proxy({}, { get: (t, stage) => getStageColor(stage, STAGES.indexOf(stage)) });
 const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
 
 const DEFAULTS = {
@@ -486,6 +578,119 @@ function getOpts(key) { try{const v=localStorage.getItem('crm_opts_'+key);return
 function saveOpts(key,arr) { try{localStorage.setItem('crm_opts_'+key,JSON.stringify(arr));}catch(e){} }
 
 let deals=[], currentUser=null, editingDealId=null, crmUsers=[], currentOptsKey=null, draggedDealId=null;
+
+// ── SIDEBAR TOGGLE ──
+function toggleSidebar() {
+  const sb = document.querySelector('.sidebar');
+  const main = document.querySelector('.main-area');
+  const icon = document.getElementById('sb-toggle-icon');
+  const collapsed = sb.classList.toggle('collapsed');
+  main.classList.toggle('collapsed', collapsed);
+  icon.className = collapsed ? 'ti ti-layout-sidebar-left-expand' : 'ti ti-layout-sidebar-left-collapse';
+  localStorage.setItem('crm-sidebar', collapsed ? 'collapsed' : 'expanded');
+}
+function initSidebar() {
+  const saved = localStorage.getItem('crm-sidebar');
+  if (saved === 'collapsed') {
+    document.querySelector('.sidebar').classList.add('collapsed');
+    document.querySelector('.main-area').classList.add('collapsed');
+    document.getElementById('sb-toggle-icon').className = 'ti ti-layout-sidebar-left-expand';
+  }
+}
+
+// ── FUNIL MANAGEMENT ──
+function renderFunilList() {
+  const funis = getFunis();
+  const currentId = getCurrentFunilId();
+  const list = document.getElementById('funil-list');
+  if (!list) return;
+  list.innerHTML = funis.map(f => `
+    <div class="funil-item ${f.id === currentId ? 'active' : ''}" onclick="switchFunil('${f.id}')">
+      <i class="ti ti-git-branch" style="font-size:15px"></i>
+      <span style="flex:1">${f.name}</span>
+      ${f.id !== 'default' ? `<button onclick="event.stopPropagation();openEditFunil('${f.id}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:13px;padding:2px;display:flex;align-items:center" title="Editar"><i class="ti ti-pencil"></i></button>` : ''}
+    </div>`).join('');
+}
+
+function switchFunil(id) {
+  setCurrentFunilId(id);
+  STAGES = getCurrentFunil().stages;
+  renderFunilList();
+  populateFilters();
+  render();
+}
+
+function openAddFunil() {
+  editingFunilId = null;
+  tempFunilStages = [...DEFAULT_STAGES];
+  document.getElementById('funil-name').value = '';
+  document.getElementById('modal-funil-title').textContent = 'Novo funil';
+  document.getElementById('funil-save-label').textContent = 'Criar funil';
+  renderFunilStagesList();
+  document.getElementById('modal-funil').classList.add('open');
+}
+
+function openEditFunil(id) {
+  const funis = getFunis();
+  const funil = funis.find(f => f.id === id);
+  if (!funil) return;
+  editingFunilId = id;
+  tempFunilStages = [...funil.stages];
+  document.getElementById('funil-name').value = funil.name;
+  document.getElementById('modal-funil-title').textContent = 'Editar funil';
+  document.getElementById('funil-save-label').textContent = 'Salvar alterações';
+  renderFunilStagesList();
+  document.getElementById('modal-funil').classList.add('open');
+}
+
+function renderFunilStagesList() {
+  const list = document.getElementById('funil-stages-list');
+  list.innerHTML = tempFunilStages.map((s, i) => `
+    <div style="display:flex;align-items:center;gap:8px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px">
+      <span style="flex:1;font-size:14px">${s}</span>
+      <button onclick="moveFunilStage(${i},-1)" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:2px" title="Mover acima" ${i===0?'disabled':''} ><i class="ti ti-arrow-up"></i></button>
+      <button onclick="moveFunilStage(${i},1)" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:2px" title="Mover abaixo" ${i===tempFunilStages.length-1?'disabled':''}><i class="ti ti-arrow-down"></i></button>
+      <button onclick="removeFunilStage(${i})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:2px" title="Remover"><i class="ti ti-x"></i></button>
+    </div>`).join('');
+}
+
+function addFunilStage() {
+  const input = document.getElementById('new-stage-input');
+  const val = input.value.trim();
+  if (!val || tempFunilStages.includes(val)) return;
+  tempFunilStages.push(val);
+  input.value = '';
+  renderFunilStagesList();
+}
+
+function removeFunilStage(i) { tempFunilStages.splice(i, 1); renderFunilStagesList(); }
+function moveFunilStage(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= tempFunilStages.length) return;
+  [tempFunilStages[i], tempFunilStages[j]] = [tempFunilStages[j], tempFunilStages[i]];
+  renderFunilStagesList();
+}
+
+function saveFunil() {
+  const name = document.getElementById('funil-name').value.trim();
+  if (!name) { toast('Informe o nome do funil.', 'error'); return; }
+  if (tempFunilStages.length < 2) { toast('Adicione pelo menos 2 etapas.', 'error'); return; }
+  const funis = getFunis();
+  if (editingFunilId) {
+    const idx = funis.findIndex(f => f.id === editingFunilId);
+    if (idx >= 0) { funis[idx].name = name; funis[idx].stages = tempFunilStages; }
+  } else {
+    funis.push({ id: 'funil_' + Date.now(), name, stages: tempFunilStages });
+  }
+  saveFunisStorage(funis);
+  if (editingFunilId && editingFunilId === getCurrentFunilId()) {
+    STAGES = tempFunilStages;
+  }
+  renderFunilList();
+  closeModal('modal-funil');
+  toast(editingFunilId ? 'Funil atualizado!' : 'Funil criado!');
+  render();
+}
 
 // ── THEME ──
 function toggleDark() {
@@ -499,6 +704,12 @@ function initTheme() {
   const saved = localStorage.getItem('crm-theme')||'light';
   document.documentElement.setAttribute('data-theme', saved);
   document.getElementById('theme-icon').className = saved==='dark' ? 'ti ti-sun' : 'ti ti-moon';
+}
+
+function initApp() {
+  initTheme();
+  initSidebar();
+  renderFunilList();
 }
 
 // ── TOAST ──
@@ -555,7 +766,7 @@ function syncSearch(){const sb=document.getElementById('sb-search').value;const 
 
 // ── FILTERS ──
 function getFiltered(){const q=document.getElementById('f-search').value.toLowerCase();const fs=document.getElementById('f-stage').value;const fg=document.getElementById('f-segment').value;const fo=document.getElementById('f-owner').value;const fst=document.getElementById('f-state').value;return deals.filter(d=>{const search=[d.company,d.city,d.owner,d.subsegment,d.segment,d.origem,d.origem_detail].filter(Boolean).join(' ').toLowerCase();return(!q||search.includes(q))&&(!fs||d.stage===fs)&&(!fg||d.segment===fg)&&(!fo||d.owner===fo)&&(!fst||d.state===fst);});}
-function populateFilters(){const owners=[...new Set(deals.map(d=>d.owner).filter(Boolean))].sort();const states=[...new Set(deals.map(d=>d.state).filter(Boolean))].sort();const fEl=(id,cur,opts)=>{const el=document.getElementById(id);const first=el.options[0].outerHTML;el.innerHTML=first+opts.map(o=>`<option value="${o}">${o}</option>`).join('');el.value=cur;};fEl('f-owner',document.getElementById('f-owner').value,owners);fEl('f-state',document.getElementById('f-state').value,states);fEl('f-stage',document.getElementById('f-stage').value,STAGES);refreshFormDropdowns();}
+function populateFilters(){const owners=[...new Set(deals.map(d=>d.owner).filter(Boolean))].sort();const states=[...new Set(deals.map(d=>d.state).filter(Boolean))].sort();const fEl=(id,cur,opts)=>{const el=document.getElementById(id);const first=el.options[0].outerHTML;el.innerHTML=first+opts.map(o=>`<option value="${o}">${o}</option>`).join('');el.value=cur;};fEl('f-owner',document.getElementById('f-owner').value,owners);fEl('f-state',document.getElementById('f-state').value,states);fEl('f-stage',document.getElementById('f-stage').value,STAGES);renderFunilList();refreshFormDropdowns();}
 function populateOwners(selectId,selected){const el=document.getElementById(selectId);el.innerHTML='<option value="">Selecione...</option>'+crmUsers.map(u=>`<option value="${u}" ${u===selected?'selected':''}>${u}</option>`).join('');}
 function clearFilters(){['f-search','f-stage','f-segment','f-owner','f-state'].forEach(id=>document.getElementById(id).value='');document.getElementById('sb-search').value='';render();}
 function toggleFilters(){const panel=document.getElementById('filter-bar-panel');const btn=document.getElementById('btn-toggle-filters');const isOpen=panel.classList.contains('open');panel.classList.toggle('open',!isOpen);btn.style.background=!isOpen?'var(--brand)':'';btn.style.color=!isOpen?'#fff':'';btn.style.borderColor=!isOpen?'var(--brand)':'';}
@@ -725,6 +936,23 @@ async function saveDealForm(){
 }
 
 // ── EXPORT ──
+function exportXLSX(){
+  if(typeof XLSX === 'undefined'){toast('Erro: biblioteca XLSX não carregada.','error');return;}
+  const fd=getFiltered();
+  const rows=[['Empresa','MRR','Segmento','Sub-segmento','Estado','Município','Responsável','Origem','Origem detalhada','Etapa','Última interação','Atividades pendentes']];
+  fd.forEach(d=>{
+    const lastH=d.history.length?d.history[d.history.length-1].date+' – '+d.history[d.history.length-1].text:'';
+    const pendAct=d.activities.filter(a=>!a.done).map(a=>a.title).join('; ');
+    rows.push([d.company,d.mrr||0,d.segment||'',d.subsegment||'',d.state||'',d.city||'',d.owner||'',d.origem||'',d.origem_detail||'',d.stage,lastH,pendAct]);
+  });
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:30},{wch:12},{wch:15},{wch:20},{wch:8},{wch:20},{wch:20},{wch:15},{wch:20},{wch:20},{wch:50},{wch:40}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Pipeline');
+  XLSX.writeFile(wb,'bhub_ma_pipeline_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  toast('Excel exportado!');
+}
+
 function exportCSV(){const fd=getFiltered();const rows=[['Empresa','MRR','Segmento','Sub-segmento','Estado','Município','Responsável','Origem','Origem detalhada','Etapa','Última interação','Atividades pendentes']];fd.forEach(d=>{const lastH=d.history.length?d.history[d.history.length-1].date+' – '+d.history[d.history.length-1].text:'';const pendAct=d.activities.filter(a=>!a.done).map(a=>a.title).join('; ');rows.push([d.company,d.mrr||'',d.segment||'',d.subsegment||'',d.state||'',d.city||'',d.owner||'',d.origem||'',d.origem_detail||'',d.stage,lastH,pendAct]);});const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='bhub_ma_pipeline_'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);toast('CSV exportado!');}
 
 function setView(v){
@@ -749,7 +977,7 @@ function render(){
 document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});});
 
 async function init(){
-  initTheme();
+  initApp();
   if(!window.SUPABASE_URL||window.SUPABASE_URL==='COLE_SUA_SUPABASE_URL_AQUI'){document.getElementById('loading-screen').style.display='none';document.getElementById('app').style.display='flex';deals=[];render();return;}
   if(window.location.hash&&window.location.hash.includes('access_token')){await sb.auth.getSession();window.location.hash='';}
   sb.auth.onAuthStateChange(async(event,session)=>{
