@@ -1138,8 +1138,7 @@ function exportCSV() {
     const pendAct = d.activities.filter(a=>!a.done).map(a=>a.title).join('; ');
     rows.push([d.company,d.mrr||'',d.segment||'',d.subsegment||'',d.state||'',d.city||'',d.owner||'',d.origem||'',d.origem_detail||'',d.stage,lastH,pendAct]);
   });
-  const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('
-');
+  const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
   const blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
