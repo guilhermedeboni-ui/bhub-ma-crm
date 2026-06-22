@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>BHub M&A CRM</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231A1F35'/><text y='22' x='4' font-size='18' fill='white'>⬡</text></svg>"/>
+  <title>CRM - M&A</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23FF4757'/><path d='M8 10h7.5c2.5 0 4 1.2 4 3.2 0 1.3-.7 2.3-1.8 2.8 1.4.4 2.3 1.5 2.3 3 0 2.2-1.7 3.5-4.4 3.5H8V10zm3 2.5v3h4c1 0 1.6-.6 1.6-1.5S16 11 15 11H11v1.5zm0 5.5v3.5h4.5c1.1 0 1.8-.6 1.8-1.7 0-1.1-.7-1.8-1.8-1.8H11z' fill='white'/></svg>"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
@@ -101,7 +101,7 @@
     /* ── DRAG AND DROP FUNIS ── */
     .funil-item { cursor: pointer; transition: opacity .15s; }
     .funil-item.dragging-funil { opacity: .4; }
-    .funil-item.drag-over-funil { border-top: 2px solid rgba(255,255,255,.5); }
+    .funil-item.drag-over-funil { border-top: 2px solid rgba(255,255,255,.4); }
     .stage-drag-item.drag-over-stage { box-shadow: 0 -3px 0 var(--accent); }
 
     /* ── FUNIL SECTION ── */
@@ -147,7 +147,8 @@
     .filter-group select:focus, .filter-group input:focus { border-color: var(--accent); }
 
     /* ── KANBAN ── */
-    .kanban { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 12px; min-height: calc(100vh - 200px); align-items: flex-start; }
+    .kanban { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 12px; min-height: calc(100vh - 200px); align-items: flex-start; cursor: grab; user-select: none; }
+    .kanban.dragging-scroll { cursor: grabbing; }
     .kanban::-webkit-scrollbar { height: 6px; }
     .kanban::-webkit-scrollbar-track { background: var(--bg-surface); border-radius: 3px; }
     .kanban::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 3px; }
@@ -361,11 +362,11 @@
     <div class="sb-header" style="display:flex;align-items:center;justify-content:space-between">
       <a class="sb-logo" href="#">
         <div class="sb-logo-mark">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="1" y="4" width="6" height="6" rx="1.2" transform="rotate(-45 4 4)" fill="white"/><rect x="7" y="4" width="6" height="6" rx="1.2" transform="rotate(-45 10 4)" fill="white"/><rect x="1" y="10" width="6" height="6" rx="1.2" transform="rotate(-45 4 10)" fill="white"/><rect x="7" y="10" width="6" height="6" rx="1.2" transform="rotate(-45 10 10)" fill="white"/></svg>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 4h8c2.8 0 4.5 1.3 4.5 3.5 0 1.4-.8 2.5-2 3 1.6.5 2.5 1.7 2.5 3.2C16 16.1 14.1 17 11 17H3V4zm3 2.5v3h4.5c1.1 0 1.8-.6 1.8-1.5s-.7-1.5-1.8-1.5H6zm0 5.5v3.5H11c1.3 0 2-.7 2-1.8 0-1.1-.7-1.7-2-1.7H6z" fill="white"/></svg>
         </div>
         <div class="sb-logo-text">
-          <span class="sb-logo-name">BHub</span>
-          <span class="sb-logo-tag">M&A CRM</span>
+          <span class="sb-logo-name">CRM - M&A</span>
+          <span class="sb-logo-tag">BHub</span>
         </div>
       </a>
       <button class="sb-icon-btn sb-toggle-btn" onclick="toggleSidebar()" title="Recolher menu" style="margin-left:auto"><i class="ti ti-layout-sidebar-left-collapse" id="sb-toggle-icon"></i></button>
@@ -518,6 +519,7 @@
       <div class="form-grid">
         <div class="form-group full"><label>Nome *</label><input id="contact-name" placeholder="Ex: João Silva"/></div>
         <div class="form-group full"><label>Cargo</label><input id="contact-role" placeholder="Ex: Sócio-fundador"/></div>
+        <div class="form-group full"><label>Empresa</label><input id="contact-company" placeholder="Ex: BWA Global"/></div>
         <div class="form-group"><label>E-mail</label><input id="contact-email" type="email" placeholder="joao@empresa.com"/></div>
         <div class="form-group"><label>Telefone</label><input id="contact-phone" placeholder="(11) 99999-9999"/></div>
       </div>
@@ -729,23 +731,11 @@ function renderFunilList() {
       ${funis.length > 1 ? `<button onclick="event.stopPropagation();deleteFunil('${f.id}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:13px;padding:2px;display:flex;align-items:center" title="Excluir"><i class="ti ti-trash"></i></button>` : ''}
     </div>`).join('');
 
-  // Drag and drop reorder
   let dragFunilIdx = null;
   list.querySelectorAll('.funil-item').forEach(el => {
-    el.addEventListener('dragstart', e => {
-      dragFunilIdx = parseInt(el.dataset.funilIdx);
-      el.classList.add('dragging-funil');
-      e.dataTransfer.effectAllowed = 'move';
-    });
-    el.addEventListener('dragend', () => {
-      el.classList.remove('dragging-funil');
-      list.querySelectorAll('.funil-item').forEach(e => e.classList.remove('drag-over-funil'));
-    });
-    el.addEventListener('dragover', e => {
-      e.preventDefault();
-      list.querySelectorAll('.funil-item').forEach(e => e.classList.remove('drag-over-funil'));
-      el.classList.add('drag-over-funil');
-    });
+    el.addEventListener('dragstart', e => { dragFunilIdx = parseInt(el.dataset.funilIdx); el.classList.add('dragging-funil'); e.dataTransfer.effectAllowed = 'move'; });
+    el.addEventListener('dragend', () => { el.classList.remove('dragging-funil'); list.querySelectorAll('.funil-item').forEach(e => e.classList.remove('drag-over-funil')); });
+    el.addEventListener('dragover', e => { e.preventDefault(); list.querySelectorAll('.funil-item').forEach(e => e.classList.remove('drag-over-funil')); el.classList.add('drag-over-funil'); });
     el.addEventListener('drop', async e => {
       e.preventDefault();
       const toIdx = parseInt(el.dataset.funilIdx);
@@ -765,9 +755,8 @@ function switchFunil(id) {
   STAGES = getCurrentFunil().stages;
   renderFunilList();
   populateFilters();
+  setView('pipeline');
   render();
-  const actView = document.getElementById('view-activities');
-  if (actView && actView.style.display !== 'none') renderAllActivities();
 }
 
 function openAddFunil() {
@@ -1002,20 +991,14 @@ async function saveEditOpt(i) {
   const input = document.getElementById('edit-opt-input-'+i);
   if (!input) return;
   const newVal = input.value.trim();
-  // Decode HTML entities from data-original attribute
   const rawOriginal = input.dataset.original || '';
   const tmp = document.createElement('textarea');
   tmp.innerHTML = rawOriginal;
   const originalVal = tmp.value;
   if (!newVal || !originalVal) return;
-  // Get raw cache (unsorted) to find and replace the correct value
   const raw = optsCache[currentOptsKey] || DEFAULTS[currentOptsKey] || [];
   const idx = raw.indexOf(originalVal);
-  if (idx >= 0) {
-    raw[idx] = newVal;
-  } else {
-    raw.push(newVal); // fallback
-  }
+  if (idx >= 0) { raw[idx] = newVal; } else { raw.push(newVal); }
   await saveOpts(currentOptsKey, raw);
   await renameOptInDeals(currentOptsKey, originalVal, newVal);
   renderOptsList();
@@ -1193,7 +1176,7 @@ function renderDetail(d){
       if(a.pinned && !b.pinned) return -1;
       if(!a.pinned && b.pinned) return 1;
       return 0;
-    }).reverse();
+    });
 
   const histHtml = sortedHistory.length ? sortedHistory.map(h=>{
     const origIdx = h._origIdx;
@@ -1234,6 +1217,7 @@ function renderDetail(d){
       </div>
       <div class="contact-name">${ct.name}</div>
       ${ct.role?`<div class="contact-role">${ct.role}</div>`:''}
+      ${ct.company?`<div class="contact-role" style="color:var(--text-3)">${ct.company}</div>`:''}
       <div class="contact-info">
         ${ct.email?`<div class="contact-info-item"><i class="ti ti-mail" style="font-size:13px"></i><a href="mailto:${ct.email}" style="color:var(--text-2);text-decoration:none">${ct.email}</a></div>`:''}
         ${ct.phone?`<div class="contact-info-item"><i class="ti ti-phone" style="font-size:13px"></i>${ct.phone}</div>`:''}
@@ -1288,7 +1272,7 @@ function renderDetail(d){
 }
 async function changeStage(id,stage){const d=deals.find(x=>x.id===id);if(!d)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Etapa alterada para "'+stage+'"'});d.stage=stage;const ok=await saveDeal(d);if(!ok)return;toast('Etapa atualizada');renderDetail(d);render();}
 async function addHistory(dealId){const d=deals.find(x=>x.id===dealId);if(!d)return;const text=document.getElementById('hist-text-inp').value.trim();if(!text)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text});const ok=await saveDeal(d);if(!ok)return;toast('Interação registrada');renderDetail(d);render();}
-async function addActivity(dealId){const d=deals.find(x=>x.id===dealId);if(!d)return;const title=document.getElementById('act-title-inp').value.trim();if(!title)return;const date=document.getElementById('act-date-inp').value;d.activities.push({id:Date.now(),title,date,done:false});const ok=await saveDeal(d);if(!ok)return;toast('Atividade adicionada');renderDetail(d);render();}
+async function addActivity(dealId){const d=deals.find(x=>x.id===dealId);if(!d)return;const title=document.getElementById('act-title-inp').value.trim();if(!title)return;const date=document.getElementById('act-date-inp').value;d.activities.unshift({id:Date.now(),title,date,done:false});const ok=await saveDeal(d);if(!ok)return;toast('Atividade adicionada');renderDetail(d);render();}
 async function toggleAct(dealId,actId){const d=deals.find(x=>x.id===dealId);if(!d)return;const a=d.activities.find(x=>x.id===actId);if(!a)return;a.done=!a.done;if(a.done)d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Atividade concluída: "'+a.title+'".'});await saveDeal(d);renderDetail(d);render();}
 async function toggleActGlobal(dealId, actId) {
   const d = deals.find(x => x.id === dealId); if (!d) return;
@@ -1488,7 +1472,7 @@ function openAddContact(dealId) {
   contactDealId = dealId;
   editingContactIdx = null;
   document.getElementById('modal-contact-title').textContent = 'Adicionar contato';
-  ['contact-name','contact-role','contact-email','contact-phone'].forEach(id => document.getElementById(id).value = '');
+  ['contact-name','contact-role','contact-company','contact-email','contact-phone'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('modal-contact').classList.add('open');
 }
 
@@ -1500,6 +1484,7 @@ function openEditContact(dealId, idx) {
   document.getElementById('modal-contact-title').textContent = 'Editar contato';
   document.getElementById('contact-name').value = ct.name||'';
   document.getElementById('contact-role').value = ct.role||'';
+  document.getElementById('contact-company').value = ct.company||'';
   document.getElementById('contact-email').value = ct.email||'';
   document.getElementById('contact-phone').value = ct.phone||'';
   document.getElementById('modal-contact').classList.add('open');
@@ -1513,6 +1498,7 @@ async function saveContact() {
   const ct = {
     name,
     role: document.getElementById('contact-role').value.trim(),
+    company: document.getElementById('contact-company').value.trim(),
     email: document.getElementById('contact-email').value.trim(),
     phone: document.getElementById('contact-phone').value.trim(),
   };
@@ -1687,6 +1673,30 @@ async function showApp() {
   document.getElementById('sb-avatar').textContent = name.charAt(0).toUpperCase();
   await loadDeals();
 }
+
+// ── KANBAN DRAG SCROLL ──
+(function() {
+  let isDown = false, startX, scrollLeft, target;
+  document.addEventListener('mousedown', e => {
+    const kb = e.target.closest('.kanban');
+    if (!kb) return;
+    // Don't trigger if clicking a card or button
+    if (e.target.closest('.deal-card') || e.target.closest('button') || e.target.closest('.lane-add-btn')) return;
+    isDown = true; target = kb;
+    startX = e.pageX - kb.offsetLeft;
+    scrollLeft = kb.scrollLeft;
+    kb.classList.add('dragging-scroll');
+  });
+  document.addEventListener('mouseleave', () => { isDown = false; if(target) target.classList.remove('dragging-scroll'); });
+  document.addEventListener('mouseup', () => { isDown = false; if(target) target.classList.remove('dragging-scroll'); });
+  document.addEventListener('mousemove', e => {
+    if (!isDown || !target) return;
+    e.preventDefault();
+    const x = e.pageX - target.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    target.scrollLeft = scrollLeft - walk;
+  });
+})();
 
 init();
 </script>
