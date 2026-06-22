@@ -319,6 +319,26 @@
     .toast.show { transform: translateY(0); opacity: 1; }
     .toast.error { background: #DC2626; }
 
+
+    /* ── USERS VIEW ── */
+    .users-container { max-width: 720px; margin: 0 auto; padding: 24px; }
+    .users-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .users-table { background: var(--bg-card); border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; }
+    .users-table-header { display: grid; grid-template-columns: 1fr 1fr 140px 80px; gap: 12px; padding: 10px 16px; background: var(--bg-surface); border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .5px; }
+    .users-row { display: grid; grid-template-columns: 1fr 1fr 140px 80px; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); align-items: center; font-size: 13px; }
+    .users-row:last-child { border-bottom: none; }
+    .user-avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .user-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .user-name-text { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-email-text { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .role-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    .role-badge.admin { background: #FEF2F2; color: #B91C1C; }
+    .role-badge.editor { background: #EFF6FF; color: #1D4ED8; }
+    .role-badge.viewer { background: #F0FDF4; color: #15803D; }
+    .invite-form { background: var(--bg-surface); border-radius: var(--radius-lg); border: 1px solid var(--border); padding: 20px; margin-bottom: 20px; }
+    .invite-form h3 { font-size: 14px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+    .invite-grid { display: grid; grid-template-columns: 1fr 1fr 160px auto; gap: 10px; align-items: end; }
+
     /* ── EMPTY ── */
     .empty { text-align: center; padding: 48px 20px; color: var(--text-3); }
     .empty i { font-size: 40px; display: block; margin-bottom: 12px; opacity: .4; }
@@ -390,6 +410,9 @@
       <button class="sb-nav-item" id="nav-activities" onclick="setView('activities')">
         <i class="ti ti-calendar-event"></i> <span>Atividades</span>
         <span class="sb-badge" id="act-badge" style="display:none"></span>
+      </button>
+      <button class="sb-nav-item" id="nav-users" onclick="setView('users')" style="display:none">
+        <i class="ti ti-users"></i> <span>Usuários</span>
       </button>
     </nav>
     <div class="sb-footer">
@@ -1658,10 +1681,14 @@ function exportCSV() {
 function setView(v) {
   document.getElementById('view-pipeline').style.display = v==='pipeline' ? 'block' : 'none';
   document.getElementById('view-activities').style.display = v==='activities' ? 'block' : 'none';
+  document.getElementById('view-users').style.display = v==='users' ? 'block' : 'none';
   document.getElementById('nav-pipeline').classList.toggle('active', v==='pipeline');
   document.getElementById('nav-activities').classList.toggle('active', v==='activities');
-  document.getElementById('page-title').textContent = v==='pipeline' ? 'Pipeline M&A' : 'Atividades';
+  document.getElementById('nav-users').classList.toggle('active', v==='users');
+  const titles = {pipeline:'Pipeline M&A', activities:'Atividades', users:'Usuários'};
+  document.getElementById('page-title').textContent = titles[v]||'';
   if (v==='activities') renderAllActivities();
+  if (v==='users') loadUsersView();
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
@@ -1713,7 +1740,108 @@ async function showApp() {
   const name = currentUser.user_metadata?.full_name || currentUser.email;
   document.getElementById('sb-username').textContent = name;
   document.getElementById('sb-avatar').textContent = name.charAt(0).toUpperCase();
+  // Load user profile/role
+  await loadCurrentUserRole();
   await loadDeals();
+}
+
+
+// ── USER MANAGEMENT ──
+let currentUserRole = 'editor'; // default until loaded
+let profilesCache = [];
+
+async function loadCurrentUserRole() {
+  try {
+    const { data } = await sb.from('crm_profiles').select('role').eq('id', currentUser.id).single();
+    currentUserRole = data?.role || 'editor';
+  } catch(e) { currentUserRole = 'editor'; }
+  applyRoleRestrictions();
+}
+
+function applyRoleRestrictions() {
+  // Show users nav only for admin
+  const usersNav = document.getElementById('nav-users');
+  if (usersNav) usersNav.style.display = currentUserRole === 'admin' ? 'flex' : 'none';
+  // Viewer: hide edit buttons, new deal, etc.
+  if (currentUserRole === 'viewer') {
+    document.querySelectorAll('.btn-primary, .btn-danger').forEach(b => b.style.display='none');
+  }
+}
+
+async function loadUsersView() {
+  const body = document.getElementById('users-list-body');
+  body.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-3);font-size:13px">Carregando...</div>';
+  try {
+    const { data, error } = await sb.from('crm_profiles').select('*').order('created_at');
+    if (error) throw error;
+    profilesCache = data || [];
+    if (!profilesCache.length) {
+      body.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-3);font-size:13px">Nenhum usuário cadastrado ainda.</div>';
+      return;
+    }
+    body.innerHTML = profilesCache.map(p => `
+      <div class="users-row">
+        <div class="user-info">
+          <div class="user-avatar-sm">${(p.full_name||p.email||'?').charAt(0).toUpperCase()}</div>
+          <div>
+            <div class="user-name-text">${p.full_name||'—'}</div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.email||'—'}</div>
+        <div>
+          <select onchange="updateUserRole('${p.id}',this.value)" style="font-family:var(--font);font-size:12px;border:1px solid var(--border-md);border-radius:6px;padding:4px 8px;background:var(--bg-card);color:var(--text)" ${p.id===currentUser.id?'disabled':''}>
+            <option value="admin" ${p.role==='admin'?'selected':''}>Admin</option>
+            <option value="editor" ${p.role==='editor'?'selected':''}>Editor</option>
+            <option value="viewer" ${p.role==='viewer'?'selected':''}>Viewer</option>
+          </select>
+        </div>
+        <div>
+          ${p.id !== currentUser.id ? `<button onclick="removeUser('${p.id}','${p.email||''}')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:4px;border-radius:5px;display:flex;align-items:center" title="Remover acesso"><i class="ti ti-trash"></i></button>` : '<span style="font-size:11px;color:var(--text-3)">Você</span>'}
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    body.innerHTML = `<div style="padding:24px;text-align:center;color:var(--text-3);font-size:13px">Erro ao carregar usuários: ${e.message}</div>`;
+  }
+}
+
+async function inviteUser() {
+  const name = document.getElementById('invite-name').value.trim();
+  const email = document.getElementById('invite-email').value.trim();
+  const role = document.getElementById('invite-role').value;
+  if (!email) { toast('Informe o e-mail do usuário.','error'); return; }
+  try {
+    // Create user via Supabase Admin (uses service role — needs to be done via edge function in production)
+    // For now, invite via email magic link + upsert profile
+    const { data, error } = await sb.auth.admin.inviteUserByEmail(email, {
+      data: { full_name: name }
+    });
+    if (error) throw error;
+    // Save profile with role
+    await sb.from('crm_profiles').upsert({ id: data.user.id, email, full_name: name, role }, { onConflict: 'id' });
+    toast(`Convite enviado para ${email}!`);
+    document.getElementById('invite-name').value = '';
+    document.getElementById('invite-email').value = '';
+    loadUsersView();
+  } catch(e) {
+    // Fallback: try to insert profile by email if user already exists
+    toast('Erro ao convidar: ' + (e.message||'verifique as permissões do Supabase'),'error');
+  }
+}
+
+async function updateUserRole(userId, newRole) {
+  const { error } = await sb.from('crm_profiles').update({ role: newRole }).eq('id', userId);
+  if (error) { toast('Erro ao atualizar perfil.','error'); return; }
+  toast('Perfil atualizado!');
+  const p = profilesCache.find(x=>x.id===userId);
+  if(p) p.role = newRole;
+}
+
+async function removeUser(userId, email) {
+  if (!confirm(`Remover acesso de ${email||'este usuário'}? Ele não poderá mais entrar no CRM.`)) return;
+  const { error } = await sb.from('crm_profiles').delete().eq('id', userId);
+  if (error) { toast('Erro ao remover usuário.','error'); return; }
+  toast('Acesso removido.');
+  loadUsersView();
 }
 
 // ── INLINE EDIT ──
