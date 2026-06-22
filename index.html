@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CRM - M&A</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231A1F35'/><g transform='translate(16,16)'><rect x='-9' y='-3' width='6' height='6' rx='1' transform='rotate(45)' fill='white' opacity='1'/><rect x='3' y='-3' width='6' height='6' rx='1' transform='rotate(45)' fill='white' opacity='1'/><rect x='-9' y='3' width='6' height='6' rx='1' transform='rotate(45)' fill='white' opacity='0.6'/><rect x='3' y='3' width='6' height='6' rx='1' transform='rotate(45)' fill='white' opacity='0.6'/></g></svg>"/>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23EFEFEF'/><g transform='translate(16,16)'><rect x='-8' y='-3' width='6' height='6' rx='0.8' transform='rotate(45)' fill='%231A1F35'/><rect x='2' y='-3' width='6' height='6' rx='0.8' transform='rotate(45)' fill='%231A1F35'/><rect x='-8' y='3' width='6' height='6' rx='0.8' transform='rotate(45)' fill='%231A1F35'/><rect x='2' y='3' width='6' height='6' rx='0.8' transform='rotate(45)' fill='%231A1F35'/></g></svg>"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
@@ -98,7 +98,6 @@
     .stage-drag-item { cursor: grab; transition: opacity .15s, box-shadow .15s; }
     .stage-drag-item:active { cursor: grabbing; }
     .stage-drag-item.dragging-stage { opacity: .4; }
-    /* ── DRAG AND DROP FUNIS ── */
     .funil-item { cursor: pointer; transition: opacity .15s; }
     .funil-item.dragging-funil { opacity: .4; }
     .funil-item.drag-over-funil { border-top: 2px solid rgba(255,255,255,.4); }
@@ -361,13 +360,13 @@
   <aside class="sidebar">
     <div class="sb-header" style="display:flex;align-items:center;justify-content:space-between">
       <a class="sb-logo" href="#">
-        <div class="sb-logo-mark" style="background:#1A1F35;border:1px solid rgba(255,255,255,.15)">
+        <div class="sb-logo-mark" style="background:#EFEFEF">
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
             <g transform="translate(11,11)">
-              <rect x="-7" y="-2.5" width="5" height="5" rx="0.8" transform="rotate(45)" fill="white"/>
-              <rect x="2" y="-2.5" width="5" height="5" rx="0.8" transform="rotate(45)" fill="white"/>
-              <rect x="-7" y="2.5" width="5" height="5" rx="0.8" transform="rotate(45)" fill="white" opacity="0.55"/>
-              <rect x="2" y="2.5" width="5" height="5" rx="0.8" transform="rotate(45)" fill="white" opacity="0.55"/>
+              <rect x="-7.5" y="-2.5" width="5.5" height="5.5" rx="0.7" transform="rotate(45)" fill="#1A1F35"/>
+              <rect x="2" y="-2.5" width="5.5" height="5.5" rx="0.7" transform="rotate(45)" fill="#1A1F35"/>
+              <rect x="-7.5" y="2.5" width="5.5" height="5.5" rx="0.7" transform="rotate(45)" fill="#1A1F35"/>
+              <rect x="2" y="2.5" width="5.5" height="5.5" rx="0.7" transform="rotate(45)" fill="#1A1F35"/>
             </g>
           </svg>
         </div>
@@ -526,7 +525,6 @@
       <div class="form-grid">
         <div class="form-group full"><label>Nome *</label><input id="contact-name" placeholder="Ex: João Silva"/></div>
         <div class="form-group full"><label>Cargo</label><input id="contact-role" placeholder="Ex: Sócio-fundador"/></div>
-        <div class="form-group full"><label>Empresa</label><input id="contact-company" placeholder="Ex: BWA Global"/></div>
         <div class="form-group"><label>E-mail</label><input id="contact-email" type="email" placeholder="joao@empresa.com"/></div>
         <div class="form-group"><label>Telefone</label><input id="contact-phone" placeholder="(11) 99999-9999"/></div>
       </div>
@@ -737,7 +735,6 @@ function renderFunilList() {
       <button onclick="event.stopPropagation();openEditFunil('${f.id}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:13px;padding:2px;display:flex;align-items:center" title="Editar"><i class="ti ti-pencil"></i></button>
       ${funis.length > 1 ? `<button onclick="event.stopPropagation();deleteFunil('${f.id}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:13px;padding:2px;display:flex;align-items:center" title="Excluir"><i class="ti ti-trash"></i></button>` : ''}
     </div>`).join('');
-
   let dragFunilIdx = null;
   list.querySelectorAll('.funil-item').forEach(el => {
     el.addEventListener('dragstart', e => { dragFunilIdx = parseInt(el.dataset.funilIdx); el.classList.add('dragging-funil'); e.dataTransfer.effectAllowed = 'move'; });
@@ -1298,16 +1295,6 @@ async function toggleActGlobal(dealId, actId) {
   if (actView && actView.style.display !== 'none') renderAllActivities();
 }
 
-// ── DELETE HISTORY ──
-async function deleteHistory(dealId, idx) {
-  if (!confirm('Excluir este registro?')) return;
-  const d = deals.find(x=>x.id===dealId); if(!d)return;
-  d.history.splice(idx, 1);
-  const ok = await saveDeal(d); if(!ok)return;
-  toast('Registro excluído');
-  renderDetail(d); render();
-}
-
 // ── DELETE ACTIVITY ──
 async function deleteActivity(dealId, actId) {
   if (!confirm('Excluir esta atividade?')) return;
@@ -1315,6 +1302,16 @@ async function deleteActivity(dealId, actId) {
   d.activities = d.activities.filter(a => a.id !== actId);
   const ok = await saveDeal(d); if(!ok)return;
   toast('Atividade excluída');
+  renderDetail(d); render();
+}
+
+// ── DELETE HISTORY ──
+async function deleteHistory(dealId, idx) {
+  if (!confirm('Excluir este registro?')) return;
+  const d = deals.find(x=>x.id===dealId); if(!d)return;
+  d.history.splice(idx, 1);
+  const ok = await saveDeal(d); if(!ok)return;
+  toast('Registro excluído');
   renderDetail(d); render();
 }
 
