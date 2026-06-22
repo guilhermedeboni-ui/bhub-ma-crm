@@ -1244,7 +1244,7 @@ function renderDetail(d){
     <div>${histHtml}</div>
     <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
       <button class="btn-danger" onclick="confirmDeleteDeal(${JSON.stringify(d.id)})"><i class="ti ti-trash"></i> Excluir oportunidade</button>
-    </div>\`;
+    </div>`;
 }
 async function changeStage(id,stage){const d=deals.find(x=>x.id===id);if(!d)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Etapa alterada para "'+stage+'"'});d.stage=stage;const ok=await saveDeal(d);if(!ok)return;toast('Etapa atualizada');renderDetail(d);render();}
 async function addHistory(dealId){const d=deals.find(x=>x.id===dealId);if(!d)return;const text=document.getElementById('hist-text-inp').value.trim();if(!text)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text});const ok=await saveDeal(d);if(!ok)return;toast('Interação registrada');renderDetail(d);render();}
@@ -1509,7 +1509,7 @@ async function togglePinHistory(dealId, origIdx) {
 function toggleActivityComment(dealId, actId) {
   const d = deals.find(x=>x.id===dealId); if(!d)return;
   const a = d.activities.find(x=>x.id===actId); if(!a)return;
-  const itemEl = document.querySelector('[data-act-id="'+actId+'"'];
+  const itemEl = document.querySelector('[data-act-id="'+actId+'"]');
   if (!itemEl) return;
   // Show comment input inline
   const commentDiv = itemEl.querySelector('.act-comment-input');
