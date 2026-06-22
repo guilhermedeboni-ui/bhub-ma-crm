@@ -1009,7 +1009,7 @@ async function doRegister() {
   if (error) { err.textContent='Erro ao criar conta: '+error.message; err.classList.add('show'); return; }
   // Update profile with real user id
   if (data.user) {
-    await sb.from('crm_profiles').update({ id: data.user.id, full_name: name||profile.full_name, pending: false }).eq('email', email);
+    await sb.from('crm_profiles').update({ user_id: data.user.id, full_name: name||profile.full_name, pending: false }).eq('email', email);
   }
   err.textContent=''; err.classList.remove('show');
   switchAuthMode('login');
@@ -1876,7 +1876,7 @@ let profilesCache = [];
 
 async function loadCurrentUserRole() {
   try {
-    const { data } = await sb.from('crm_profiles').select('role').eq('id', currentUser.id).single();
+    const { data } = await sb.from('crm_profiles').select('role').eq('user_id', currentUser.id).single();
     currentUserRole = data?.role || 'editor';
   } catch(e) { currentUserRole = 'editor'; }
   applyRoleRestrictions();
