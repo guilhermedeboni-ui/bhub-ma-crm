@@ -465,6 +465,36 @@
         <div id="kanban" class="kanban"></div>
       </div>
 
+      <!-- USERS VIEW -->
+      <div id="view-users" style="display:none">
+        <div class="users-container">
+          <div class="users-header">
+            <div>
+              <h2 style="font-size:18px;font-weight:800;color:var(--text)">Usuários</h2>
+              <p style="font-size:13px;color:var(--text-3);margin-top:2px">Gerencie quem tem acesso ao CRM</p>
+            </div>
+          </div>
+          <div class="invite-form">
+            <h3><i class="ti ti-user-plus" style="font-size:14px;margin-right:6px"></i>Convidar novo usuário</h3>
+            <div class="invite-grid">
+              <div><label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">NOME</label><input id="invite-name" placeholder="Nome completo" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:8px 10px;width:100%;background:var(--bg-card);color:var(--text)"/></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">E-MAIL</label><input id="invite-email" type="email" placeholder="email@bhub.com.br" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:8px 10px;width:100%;background:var(--bg-card);color:var(--text)"/></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">PERFIL</label><select id="invite-role" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:8px 10px;width:100%;background:var(--bg-card);color:var(--text)"><option value="editor">Editor</option><option value="viewer">Viewer</option><option value="admin">Admin</option></select></div>
+              <div><button class="btn-primary" onclick="inviteUser()" style="white-space:nowrap;height:36px"><i class="ti ti-send" style="font-size:13px"></i> Convidar</button></div>
+            </div>
+            <p style="font-size:11px;color:var(--text-3);margin-top:10px"><i class="ti ti-info-circle" style="font-size:12px"></i> O usuário receberá um e-mail para definir sua senha.</p>
+          </div>
+          <div class="users-table">
+            <div class="users-table-header">
+              <div>Usuário</div><div>E-mail</div><div>Perfil</div><div>Ações</div>
+            </div>
+            <div id="users-list-body">
+              <div style="padding:24px;text-align:center;color:var(--text-3);font-size:13px">Carregando...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ACTIVITIES VIEW -->
       <div id="view-activities" style="display:none">
         <div class="acts-page">
