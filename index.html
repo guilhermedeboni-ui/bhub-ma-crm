@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CRM - M&A</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23EFEFEF'/><rect x='5' y='5' width='8' height='8' rx='1.2' transform='rotate(45 9 9)' fill='%231A1F35'/><rect x='19' y='5' width='8' height='8' rx='1.2' transform='rotate(45 23 9)' fill='%231A1F35'/><rect x='5' y='19' width='8' height='8' rx='1.2' transform='rotate(45 9 23)' fill='%231A1F35'/><rect x='19' y='19' width='8' height='8' rx='1.2' transform='rotate(45 23 23)' fill='%231A1F35'/></svg>"/>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231A1F35'/><text y='22' x='4' font-size='18' fill='white'>⬡</text></svg>"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
@@ -223,7 +223,11 @@
     .detail-company { font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
     .detail-mrr { font-size: 18px; color: var(--accent); font-weight: 700; margin-bottom: 14px; }
     .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
-    .info-item { background: var(--bg-surface); border-radius: var(--radius); padding: 10px 12px; border: 1px solid var(--border); }
+    .info-item { background: var(--bg-surface); border-radius: var(--radius); padding: 10px 12px; border: 1px solid var(--border); cursor: pointer; transition: border-color .15s; }
+    .info-item:hover { border-color: var(--accent); }
+    .info-item.editing { padding: 6px 8px; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,71,87,.08); }
+    .inline-edit-input { font-family: var(--font); font-size: 14px; font-weight: 600; color: var(--text); background: none; border: none; outline: none; width: 100%; padding: 2px 0; }
+    .info-edit-hint { font-size: 10px; color: var(--text-3); margin-top: 2px; }
     .info-key { font-size: 11px; color: var(--text-3); font-weight: 600; margin-bottom: 3px; letter-spacing: .2px; text-transform: uppercase; }
     .info-val { font-size: 14px; color: var(--text); font-weight: 600; }
     .section-title { font-size: 12px; font-weight: 700; color: var(--text-2); letter-spacing: .5px; text-transform: uppercase; margin: 20px 0 8px; display: flex; align-items: center; gap: 6px; }
@@ -360,14 +364,6 @@
   <aside class="sidebar">
     <div class="sb-header" style="display:flex;align-items:center;justify-content:space-between">
       <a class="sb-logo" href="#">
-        <div class="sb-logo-mark" style="background:#EFEFEF">
-          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-            <rect x="2" y="2" width="7" height="7" rx="1" transform="rotate(45 5.5 5.5)" fill="#1A1F35"/>
-            <rect x="13" y="2" width="7" height="7" rx="1" transform="rotate(45 16.5 5.5)" fill="#1A1F35"/>
-            <rect x="2" y="13" width="7" height="7" rx="1" transform="rotate(45 5.5 16.5)" fill="#1A1F35"/>
-            <rect x="13" y="13" width="7" height="7" rx="1" transform="rotate(45 16.5 16.5)" fill="#1A1F35"/>
-          </svg>
-        </div>
         <div class="sb-logo-text">
           <span class="sb-logo-name">CRM - M&A</span>
           <span class="sb-logo-tag">BHub</span>
@@ -1235,20 +1231,47 @@ function renderDetail(d){
 
   document.getElementById('detail-modal-body').innerHTML=`
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:12px">
-      <div>
-        <div class="detail-company">${d.company}</div>
-        ${d.mrr?`<div class="detail-mrr">${fmtMrr(d.mrr)} MRR</div>`:''}
+      <div style="flex:1">
+        <div class="detail-company" onclick="inlineEditText(${JSON.stringify(d.id)},'company',this)" title="Clique para editar" style="cursor:pointer">${d.company}</div>
+        <div class="detail-mrr" onclick="inlineEditMrr(${JSON.stringify(d.id)},this)" title="Clique para editar" style="cursor:pointer">${d.mrr?fmtMrr(d.mrr)+' MRR':'<span style="color:var(--text-3);font-size:14px">+ Adicionar MRR</span>'}</div>
       </div>
-      <button onclick="openEditDeal(${JSON.stringify(d.id)})" class="btn-secondary" style="white-space:nowrap;flex-shrink:0"><i class="ti ti-pencil" style="font-size:14px"></i> Editar</button>
     </div>
     <div class="info-grid">
-      ${d.owner?`<div class="info-item"><div class="info-key">Responsável</div><div class="info-val">${d.owner}</div></div>`:''}
-      ${d.state?`<div class="info-item"><div class="info-key">Estado</div><div class="info-val">${d.state}</div></div>`:''}
-      ${d.city?`<div class="info-item"><div class="info-key">Município</div><div class="info-val">${d.city}</div></div>`:''}
-      ${d.segment?`<div class="info-item"><div class="info-key">Segmento</div><div class="info-val">${d.segment}</div></div>`:''}
-      ${d.subsegment?`<div class="info-item"><div class="info-key">Sub-segmento</div><div class="info-val">${d.subsegment}</div></div>`:''}
-      ${d.origem?`<div class="info-item"><div class="info-key">Origem</div><div class="info-val">${d.origem}</div></div>`:''}
-      ${d.origem_detail?`<div class="info-item"><div class="info-key">Origem detalhada</div><div class="info-val">${d.origem_detail}</div></div>`:''}
+      <div class="info-item" onclick="inlineEditOwner(${JSON.stringify(d.id)},this)" title="Clique para editar">
+        <div class="info-key">Responsável</div>
+        <div class="info-val">${d.owner||'<span style="color:var(--text-3)">—</span>'}</div>
+        <div class="info-edit-hint">Clique para editar</div>
+      </div>
+      <div class="info-item" onclick="inlineEditSelect(${JSON.stringify(d.id)},'segment',getOpts('segmentos'),this)" title="Clique para editar">
+        <div class="info-key">Segmento</div>
+        <div class="info-val">${d.segment||'<span style="color:var(--text-3)">—</span>'}</div>
+        <div class="info-edit-hint">Clique para editar</div>
+      </div>
+      <div class="info-item" onclick="inlineEditText(${JSON.stringify(d.id)},'subsegment',this)" title="Clique para editar">
+        <div class="info-key">Sub-segmento</div>
+        <div class="info-val">${d.subsegment||'<span style="color:var(--text-3)">—</span>'}</div>
+        <div class="info-edit-hint">Clique para editar</div>
+      </div>
+      <div class="info-item" onclick="inlineEditSelect(${JSON.stringify(d.id)},'origem',getOpts('origens'),this)" title="Clique para editar">
+        <div class="info-key">Origem</div>
+        <div class="info-val">${d.origem||'<span style="color:var(--text-3)">—</span>'}</div>
+        <div class="info-edit-hint">Clique para editar</div>
+      </div>
+      <div class="info-item" onclick="inlineEditSelect(${JSON.stringify(d.id)},'origem_detail',getOpts('origens_detalhadas'),this)" title="Clique para editar">
+        <div class="info-key">Origem detalhada</div>
+        <div class="info-val">${d.origem_detail||'<span style="color:var(--text-3)">—</span>'}</div>
+        <div class="info-edit-hint">Clique para editar</div>
+      </div>
+      <div class="info-item" onclick="inlineEditState(${JSON.stringify(d.id)},this)" title="Clique para editar">
+        <div class="info-key">Estado</div>
+        <div class="info-val">${d.state||'<span style="color:var(--text-3)">—</span>'}</div>
+        <div class="info-edit-hint">Clique para editar</div>
+      </div>
+      <div class="info-item" onclick="inlineEditCity(${JSON.stringify(d.id)},this)" title="Clique para editar">
+        <div class="info-key">Município</div>
+        <div class="info-val">${d.city||'<span style="color:var(--text-3)">—</span>'}</div>
+        <div class="info-edit-hint">Clique para editar</div>
+      </div>
     </div>
     <div class="section-title"><i class="ti ti-flag" style="font-size:14px"></i>Etapa do funil</div>
     <select style="font-weight:600;border-color:${c.bd};color:${c.tx}" onchange="changeStage(${JSON.stringify(d.id)},this.value)">
@@ -1691,6 +1714,125 @@ async function showApp() {
   document.getElementById('sb-username').textContent = name;
   document.getElementById('sb-avatar').textContent = name.charAt(0).toUpperCase();
   await loadDeals();
+}
+
+// ── INLINE EDIT ──
+function inlineEditText(dealId, field, el) {
+  if (el.classList.contains('editing')) return;
+  el.classList.add('editing');
+  const d = deals.find(x=>x.id===dealId); if(!d) return;
+  const cur = d[field]||'';
+  const valEl = el.querySelector('.info-val') || el;
+  const orig = valEl.innerHTML;
+  valEl.innerHTML = `<input class="inline-edit-input" value="${cur}" placeholder="${field}"/>`;
+  const inp = valEl.querySelector('input');
+  inp.focus(); inp.select();
+  const save = async () => {
+    const v = inp.value.trim();
+    d[field] = v;
+    el.classList.remove('editing');
+    renderDetail(d);
+    await saveDeal(d);
+  };
+  inp.addEventListener('blur', save);
+  inp.addEventListener('keydown', e => { if(e.key==='Enter') inp.blur(); if(e.key==='Escape') { el.classList.remove('editing'); valEl.innerHTML = orig; } });
+}
+
+function inlineEditMrr(dealId, el) {
+  if (el.classList.contains('editing')) return;
+  el.classList.add('editing');
+  const d = deals.find(x=>x.id===dealId); if(!d) return;
+  const cur = d.mrr||'';
+  el.innerHTML = `<input class="inline-edit-input" type="number" value="${cur}" placeholder="MRR em R$" style="font-size:18px;color:var(--accent);font-weight:700"/>`;
+  const inp = el.querySelector('input');
+  inp.focus(); inp.select();
+  const save = async () => {
+    const v = parseFloat(inp.value)||0;
+    d.mrr = v;
+    el.classList.remove('editing');
+    renderDetail(d);
+    await saveDeal(d);
+  };
+  inp.addEventListener('blur', save);
+  inp.addEventListener('keydown', e => { if(e.key==='Enter') inp.blur(); if(e.key==='Escape') { el.classList.remove('editing'); renderDetail(d); } });
+}
+
+function inlineEditOwner(dealId, el) {
+  if (el.classList.contains('editing')) return;
+  el.classList.add('editing');
+  const d = deals.find(x=>x.id===dealId); if(!d) return;
+  const valEl = el.querySelector('.info-val');
+  valEl.innerHTML = `<select class="inline-edit-input"><option value="">—</option>${crmUsers.map(u=>`<option value="${u}" ${u===d.owner?'selected':''}>${u}</option>`).join('')}</select>`;
+  const sel = valEl.querySelector('select');
+  sel.focus();
+  const save = async () => {
+    d.owner = sel.value;
+    el.classList.remove('editing');
+    renderDetail(d);
+    await saveDeal(d);
+  };
+  sel.addEventListener('blur', save);
+  sel.addEventListener('change', save);
+}
+
+function inlineEditSelect(dealId, field, opts, el) {
+  if (el.classList.contains('editing')) return;
+  el.classList.add('editing');
+  const d = deals.find(x=>x.id===dealId); if(!d) return;
+  const valEl = el.querySelector('.info-val');
+  valEl.innerHTML = `<select class="inline-edit-input"><option value="">—</option>${opts.map(o=>`<option value="${o}" ${o===d[field]?'selected':''}>${o}</option>`).join('')}</select>`;
+  const sel = valEl.querySelector('select');
+  sel.focus();
+  const save = async () => {
+    d[field] = sel.value;
+    el.classList.remove('editing');
+    renderDetail(d);
+    await saveDeal(d);
+  };
+  sel.addEventListener('blur', save);
+  sel.addEventListener('change', save);
+}
+
+function inlineEditState(dealId, el) {
+  if (el.classList.contains('editing')) return;
+  el.classList.add('editing');
+  const d = deals.find(x=>x.id===dealId); if(!d) return;
+  const valEl = el.querySelector('.info-val');
+  valEl.innerHTML = `<select class="inline-edit-input"><option value="">—</option>${UFS.map(uf=>`<option value="${uf}" ${uf===d.state?'selected':''}>${uf}</option>`).join('')}</select>`;
+  const sel = valEl.querySelector('select');
+  sel.focus();
+  sel.addEventListener('change', async () => {
+    d.state = sel.value;
+    d.city = '';
+    el.classList.remove('editing');
+    renderDetail(d);
+    await saveDeal(d);
+  });
+  sel.addEventListener('blur', () => { el.classList.remove('editing'); renderDetail(d); });
+}
+
+async function inlineEditCity(dealId, el) {
+  if (el.classList.contains('editing')) return;
+  const d = deals.find(x=>x.id===dealId); if(!d) return;
+  if (!d.state) { toast('Selecione o estado primeiro.','error'); return; }
+  el.classList.add('editing');
+  const valEl = el.querySelector('.info-val');
+  valEl.innerHTML = `<select class="inline-edit-input"><option value="">Carregando...</option></select>`;
+  const sel = valEl.querySelector('select');
+  try {
+    const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${d.state}/municipios?orderBy=nome`);
+    const data = await res.json();
+    sel.innerHTML = `<option value="">—</option>${data.map(c=>`<option value="${c.nome}" ${c.nome===d.city?'selected':''}>${c.nome}</option>`).join('')}`;
+    sel.focus();
+  } catch(e) { sel.innerHTML = '<option>Erro ao carregar</option>'; }
+  const save = async () => {
+    d.city = sel.value;
+    el.classList.remove('editing');
+    renderDetail(d);
+    await saveDeal(d);
+  };
+  sel.addEventListener('blur', save);
+  sel.addEventListener('change', save);
 }
 
 // ── KANBAN DRAG SCROLL ──
