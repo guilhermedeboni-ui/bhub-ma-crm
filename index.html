@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>BHub M&A CRM</title>
+  <title>CRM - M&A</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231A1F35'/><text y='22' x='4' font-size='18' fill='white'>⬡</text></svg>"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -98,6 +98,9 @@
     .stage-drag-item { cursor: grab; transition: opacity .15s, box-shadow .15s; }
     .stage-drag-item:active { cursor: grabbing; }
     .stage-drag-item.dragging-stage { opacity: .4; }
+    .funil-item { cursor: pointer; }
+    .funil-item.dragging-funil { opacity: .4; }
+    .funil-item.drag-over-funil { border-top: 2px solid rgba(255,255,255,.4); }
     .stage-drag-item.drag-over-stage { box-shadow: 0 -3px 0 var(--accent); }
 
     /* ── FUNIL SECTION ── */
@@ -143,7 +146,8 @@
     .filter-group select:focus, .filter-group input:focus { border-color: var(--accent); }
 
     /* ── KANBAN ── */
-    .kanban { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 12px; min-height: calc(100vh - 200px); align-items: flex-start; }
+    .kanban { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 12px; min-height: calc(100vh - 200px); align-items: flex-start; cursor: grab; user-select: none; }
+    .kanban.dragging-scroll { cursor: grabbing; }
     .kanban::-webkit-scrollbar { height: 6px; }
     .kanban::-webkit-scrollbar-track { background: var(--bg-surface); border-radius: 3px; }
     .kanban::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 3px; }
@@ -193,6 +197,7 @@
     /* ── MODALS ── */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 999; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(2px); }
     .modal-overlay.open { display: flex; }
+    .modal-overlay#modal-contact { z-index: 1100; }
     .modal { background: var(--bg-card); border-radius: var(--radius-xl); width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); border: 1px solid var(--border); }
     .modal-head { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--bg-card); z-index: 2; }
     .modal-title { font-size: 17px; font-weight: 700; color: var(--text); }
@@ -218,7 +223,11 @@
     .detail-company { font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
     .detail-mrr { font-size: 18px; color: var(--accent); font-weight: 700; margin-bottom: 14px; }
     .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
-    .info-item { background: var(--bg-surface); border-radius: var(--radius); padding: 10px 12px; border: 1px solid var(--border); }
+    .info-item { background: var(--bg-surface); border-radius: var(--radius); padding: 10px 12px; border: 1px solid var(--border); cursor: pointer; transition: border-color .15s; }
+    .info-item:hover { border-color: var(--accent); }
+    .info-item.editing { padding: 6px 8px; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,71,87,.08); }
+    .inline-edit-input { font-family: var(--font); font-size: 14px; font-weight: 600; color: var(--text); background: none; border: none; outline: none; width: 100%; padding: 2px 0; }
+    .info-edit-hint { font-size: 10px; color: var(--text-3); margin-top: 2px; }
     .info-key { font-size: 11px; color: var(--text-3); font-weight: 600; margin-bottom: 3px; letter-spacing: .2px; text-transform: uppercase; }
     .info-val { font-size: 14px; color: var(--text); font-weight: 600; }
     .section-title { font-size: 12px; font-weight: 700; color: var(--text-2); letter-spacing: .5px; text-transform: uppercase; margin: 20px 0 8px; display: flex; align-items: center; gap: 6px; }
@@ -310,6 +319,21 @@
     .toast.show { transform: translateY(0); opacity: 1; }
     .toast.error { background: #DC2626; }
 
+
+    /* ── USERS VIEW ── */
+    .users-container { max-width: 720px; margin: 0 auto; padding: 24px; }
+    .users-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .users-table { background: var(--bg-card); border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; }
+    .users-table-header { display: grid; grid-template-columns: 1fr 1fr 140px 80px; gap: 12px; padding: 10px 16px; background: var(--bg-surface); border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .5px; }
+    .users-row { display: grid; grid-template-columns: 1fr 1fr 140px 80px; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); align-items: center; font-size: 13px; }
+    .users-row:last-child { border-bottom: none; }
+    .user-avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .user-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .user-name-text { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .invite-form { background: var(--bg-surface); border-radius: var(--radius-lg); border: 1px solid var(--border); padding: 20px; margin-bottom: 20px; }
+    .invite-form h3 { font-size: 14px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+    .invite-grid { display: grid; grid-template-columns: 1fr 1fr 160px auto; gap: 10px; align-items: end; }
+
     /* ── EMPTY ── */
     .empty { text-align: center; padding: 48px 20px; color: var(--text-3); }
     .empty i { font-size: 40px; display: block; margin-bottom: 12px; opacity: .4; }
@@ -339,13 +363,18 @@
         <div style="font-size:12px;color:var(--text-2);font-weight:500">M&A CRM · Pipeline</div>
       </div>
     </div>
-    <div class="auth-heading">Entrar</div>
-    <div class="auth-sub">Acesse com seu e-mail corporativo</div>
+    <div class="auth-heading" id="auth-heading">Entrar</div>
+    <div class="auth-sub" id="auth-sub">Acesse com seu e-mail corporativo</div>
     <div class="auth-form">
+      <div id="auth-name-field" style="display:none"><label>Nome completo</label><input type="text" id="register-name" placeholder="Seu nome"/></div>
       <div><label>E-mail</label><input type="email" id="login-email" placeholder="voce@bhub.com.br" autocomplete="email"/></div>
-      <div><label>Senha</label><input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"/></div>
-      <div id="login-error" class="auth-error">E-mail ou senha incorretos.</div>
-      <button class="btn-auth" onclick="doLogin()">Entrar</button>
+      <div id="auth-password-field"><label id="auth-password-label">Senha</label><input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"/></div>
+      <div id="login-error" class="auth-error"></div>
+      <button class="btn-auth" id="auth-submit-btn" onclick="doLogin()">Entrar</button>
+      <div style="display:flex;justify-content:space-between;margin-top:-4px">
+        <button onclick="switchAuthMode('register')" id="auth-link-register" style="background:none;border:none;font-size:12px;color:var(--accent);cursor:pointer;font-family:var(--font);padding:0">Primeiro acesso?</button>
+        <button onclick="switchAuthMode('forgot')" id="auth-link-forgot" style="background:none;border:none;font-size:12px;color:var(--text-3);cursor:pointer;font-family:var(--font);padding:0">Esqueci minha senha</button>
+      </div>
     </div>
   </div>
 </div>
@@ -355,12 +384,9 @@
   <aside class="sidebar">
     <div class="sb-header" style="display:flex;align-items:center;justify-content:space-between">
       <a class="sb-logo" href="#">
-        <div class="sb-logo-mark">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="1" y="4" width="6" height="6" rx="1.2" transform="rotate(-45 4 4)" fill="white"/><rect x="7" y="4" width="6" height="6" rx="1.2" transform="rotate(-45 10 4)" fill="white"/><rect x="1" y="10" width="6" height="6" rx="1.2" transform="rotate(-45 4 10)" fill="white"/><rect x="7" y="10" width="6" height="6" rx="1.2" transform="rotate(-45 10 10)" fill="white"/></svg>
-        </div>
         <div class="sb-logo-text">
-          <span class="sb-logo-name">BHub</span>
-          <span class="sb-logo-tag">M&A CRM</span>
+          <span class="sb-logo-name">CRM - M&A</span>
+          <span class="sb-logo-tag">BHub</span>
         </div>
       </a>
       <button class="sb-icon-btn sb-toggle-btn" onclick="toggleSidebar()" title="Recolher menu" style="margin-left:auto"><i class="ti ti-layout-sidebar-left-collapse" id="sb-toggle-icon"></i></button>
@@ -384,6 +410,9 @@
       <button class="sb-nav-item" id="nav-activities" onclick="setView('activities')">
         <i class="ti ti-calendar-event"></i> <span>Atividades</span>
         <span class="sb-badge" id="act-badge" style="display:none"></span>
+      </button>
+      <button class="sb-nav-item" id="nav-users" onclick="setView('users')" style="display:none">
+        <i class="ti ti-users"></i> <span>Usuários</span>
       </button>
     </nav>
     <div class="sb-footer">
@@ -435,6 +464,36 @@
       <!-- PIPELINE VIEW -->
       <div id="view-pipeline">
         <div id="kanban" class="kanban"></div>
+      </div>
+
+      <!-- USERS VIEW -->
+      <div id="view-users" style="display:none">
+        <div class="users-container">
+          <div class="users-header">
+            <div>
+              <h2 style="font-size:18px;font-weight:800;color:var(--text)">Usuários</h2>
+              <p style="font-size:13px;color:var(--text-3);margin-top:2px">Gerencie quem tem acesso ao CRM</p>
+            </div>
+          </div>
+          <div class="invite-form">
+            <h3><i class="ti ti-user-plus" style="font-size:14px;margin-right:6px"></i>Convidar novo usuário</h3>
+            <div class="invite-grid">
+              <div><label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">NOME</label><input id="invite-name" placeholder="Nome completo" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:8px 10px;width:100%;background:var(--bg-card);color:var(--text)"/></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">E-MAIL</label><input id="invite-email" type="email" placeholder="email@bhub.com.br" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:8px 10px;width:100%;background:var(--bg-card);color:var(--text)"/></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">PERFIL</label><select id="invite-role" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:8px 10px;width:100%;background:var(--bg-card);color:var(--text)"><option value="editor">Editor</option><option value="viewer">Viewer</option><option value="admin">Admin</option></select></div>
+              <div><button class="btn-primary" onclick="inviteUser()" style="white-space:nowrap;height:36px"><i class="ti ti-send" style="font-size:13px"></i> Convidar</button></div>
+            </div>
+            <p style="font-size:11px;color:var(--text-3);margin-top:10px"><i class="ti ti-info-circle" style="font-size:12px"></i> O usuário receberá um e-mail para definir sua senha.</p>
+          </div>
+          <div class="users-table">
+            <div class="users-table-header">
+              <div>Usuário</div><div>E-mail</div><div>Perfil</div><div>Ações</div>
+            </div>
+            <div id="users-list-body">
+              <div style="padding:24px;text-align:center;color:var(--text-3);font-size:13px">Carregando...</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ACTIVITIES VIEW -->
@@ -517,6 +576,7 @@
       <div class="form-grid">
         <div class="form-group full"><label>Nome *</label><input id="contact-name" placeholder="Ex: João Silva"/></div>
         <div class="form-group full"><label>Cargo</label><input id="contact-role" placeholder="Ex: Sócio-fundador"/></div>
+        <div class="form-group full"><label>Empresa</label><input id="contact-company" placeholder="Ex: BWA Global"/></div>
         <div class="form-group"><label>E-mail</label><input id="contact-email" type="email" placeholder="joao@empresa.com"/></div>
         <div class="form-group"><label>Telefone</label><input id="contact-phone" placeholder="(11) 99999-9999"/></div>
       </div>
@@ -719,15 +779,31 @@ function renderFunilList() {
   const currentId = getCurrentFunilId();
   const list = document.getElementById('funil-list');
   if (!list) return;
-  list.innerHTML = funis.map(f => `
-    <div class="funil-item ${f.id === currentId ? 'active' : ''}" onclick="switchFunil('${f.id}')">
+  list.innerHTML = funis.map((f, idx) => `
+    <div class="funil-item ${f.id === currentId ? 'active' : ''}" draggable="true" data-funil-id="${f.id}" data-funil-idx="${idx}" onclick="switchFunil('${f.id}')">
+      <i class="ti ti-grip-vertical" style="font-size:13px;color:rgba(255,255,255,.2);flex-shrink:0;cursor:grab" onclick="event.stopPropagation()"></i>
       <i class="ti ti-git-branch" style="font-size:15px"></i>
       <span style="flex:1">${f.name}</span>
-      ${f.id !== 'default' ? `
-        <button onclick="event.stopPropagation();openEditFunil('${f.id}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:13px;padding:2px;display:flex;align-items:center" title="Editar"><i class="ti ti-pencil"></i></button>
-        <button onclick="event.stopPropagation();deleteFunil('${f.id}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:13px;padding:2px;display:flex;align-items:center" title="Excluir"><i class="ti ti-trash"></i></button>
-      ` : ''}
+      <button onclick="event.stopPropagation();openEditFunil('${f.id}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:13px;padding:2px;display:flex;align-items:center" title="Editar"><i class="ti ti-pencil"></i></button>
+      ${funis.length > 1 ? `<button onclick="event.stopPropagation();deleteFunil('${f.id}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:13px;padding:2px;display:flex;align-items:center" title="Excluir"><i class="ti ti-trash"></i></button>` : ''}
     </div>`).join('');
+  let dragFunilIdx = null;
+  list.querySelectorAll('.funil-item').forEach(el => {
+    el.addEventListener('dragstart', e => { dragFunilIdx = parseInt(el.dataset.funilIdx); el.classList.add('dragging-funil'); e.dataTransfer.effectAllowed = 'move'; });
+    el.addEventListener('dragend', () => { el.classList.remove('dragging-funil'); list.querySelectorAll('.funil-item').forEach(e => e.classList.remove('drag-over-funil')); });
+    el.addEventListener('dragover', e => { e.preventDefault(); list.querySelectorAll('.funil-item').forEach(e => e.classList.remove('drag-over-funil')); el.classList.add('drag-over-funil'); });
+    el.addEventListener('drop', async e => {
+      e.preventDefault();
+      const toIdx = parseInt(el.dataset.funilIdx);
+      if (dragFunilIdx === null || dragFunilIdx === toIdx) return;
+      const funis = getFunis();
+      const [moved] = funis.splice(dragFunilIdx, 1);
+      funis.splice(toIdx, 0, moved);
+      await saveFunisStorage(funis);
+      renderFunilList();
+      toast('Funis reordenados!');
+    });
+  });
 }
 
 function switchFunil(id) {
@@ -735,6 +811,7 @@ function switchFunil(id) {
   STAGES = getCurrentFunil().stages;
   renderFunilList();
   populateFilters();
+  setView('pipeline');
   render();
 }
 
@@ -856,11 +933,11 @@ function toast(msg,type='ok') {
 
 // ── AUTH ──
 async function doLogin() {
-  const email=document.getElementById('login-email').value.trim();
+  const email=document.getElementById('login-email').value.trim().toLowerCase();
   const password=document.getElementById('login-password').value;
-  const err=document.getElementById('login-error');
-  err.classList.remove('show');
-  const {error}=await sb.auth.signInWithPassword({email,password});
+  const err=document.getElementById('login-error'); err.classList.remove('show');
+  if(!email||!password){err.textContent='Preencha e-mail e senha.';err.classList.add('show');return;}
+  const{error}=await sb.auth.signInWithPassword({email,password});
   if(error){err.textContent='E-mail ou senha incorretos.';err.classList.add('show');}
 }
 async function doLogout(){await sb.auth.signOut();}
@@ -982,7 +1059,10 @@ async function saveEditOpt(i) {
   const input = document.getElementById('edit-opt-input-'+i);
   if (!input) return;
   const newVal = input.value.trim();
-  const originalVal = input.dataset.original;
+  const rawOriginal = input.dataset.original || '';
+  const tmp = document.createElement('textarea');
+  tmp.innerHTML = rawOriginal;
+  const originalVal = tmp.value;
   if (!newVal || !originalVal) return;
   // Get raw cache (unsorted) to find and replace the correct value
   const raw = optsCache[currentOptsKey] || DEFAULTS[currentOptsKey] || [];
@@ -1015,7 +1095,7 @@ function syncSearch(){const sb=document.getElementById('sb-search').value;const 
 
 // ── FILTERS ──
 function getFiltered(){const q=document.getElementById('f-search').value.toLowerCase();const fs=document.getElementById('f-stage').value;const fg=document.getElementById('f-segment').value;const fo=document.getElementById('f-owner').value;const fst=document.getElementById('f-state').value;const funilId=getCurrentFunilId();return deals.filter(d=>{const search=[d.company,d.city,d.owner,d.subsegment,d.segment,d.origem,d.origem_detail].filter(Boolean).join(' ').toLowerCase();const myName = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
-    return(d.funil_id||'default')===funilId&&(!q||search.includes(q))&&(!fs||d.stage===fs)&&(!fg||d.segment===fg)&&(!fo||d.owner===fo)&&(!fst||d.state===fst)&&(!myDealsOnly||d.owner===myName);});}
+    return(d.funil_id||'default')===funilId&&(!q||search.includes(q))&&(!fs||d.stage===fs)&&(!fg||d.segment===fg)&&(!fo||d.owner===fo)&&(!fst||d.state===fst)&&(!window.myDealsOnly||d.owner===myName);});}
 function populateFilters(){const owners=[...new Set(deals.map(d=>d.owner).filter(Boolean))].sort();const states=[...new Set(deals.map(d=>d.state).filter(Boolean))].sort();const fEl=(id,cur,opts)=>{const el=document.getElementById(id);const first=el.options[0].outerHTML;el.innerHTML=first+opts.map(o=>`<option value="${o}">${o}</option>`).join('');el.value=cur;};fEl('f-owner',document.getElementById('f-owner').value,owners);fEl('f-state',document.getElementById('f-state').value,states);fEl('f-stage',document.getElementById('f-stage').value,STAGES);renderFunilList();refreshFormDropdowns();}
 function populateOwners(selectId,selected){
   const el=document.getElementById(selectId);
@@ -1172,7 +1252,7 @@ function renderDetail(d){
       if(a.pinned && !b.pinned) return -1;
       if(!a.pinned && b.pinned) return 1;
       return 0;
-    }).reverse();
+    });
 
   const histHtml = sortedHistory.length ? sortedHistory.map(h=>{
     const origIdx = h._origIdx;
@@ -1181,7 +1261,7 @@ function renderDetail(d){
         <span class="hist-date">${h.date}${h.author?' · <span style="font-size:11px;font-weight:600;color:var(--accent)">'+ h.author +'</span>':''}</span>
         ${h.pinned?'<span class="hist-pin-badge">Fixado</span>':''}
         <div style="display:flex;gap:2px;margin-left:auto">
-          <button onclick="togglePinHistory(${JSON.stringify(d.id)},${origIdx})" style="background:none;border:none;cursor:pointer;color:${h.pinned?'#F59E0B':'var(--text-3)'};font-size:14px;padding:2px;display:flex;align-items:center" title="${h.pinned?'Desafixar':'Fixar'}"><i class="ti ti-pin${h.pinned?'':'-off'}"></i></button>
+          <button onclick="togglePinHistory(${JSON.stringify(d.id)},${origIdx})" style="background:none;border:none;cursor:pointer;color:${h.pinned?'#F59E0B':'var(--text-3)'};font-size:14px;padding:2px;display:flex;align-items:center" title="${h.pinned?'Desafixar':'Fixar'}"><i class="ti ti-pin"></i></button>
           <button onclick="deleteHistory(${JSON.stringify(d.id)},${origIdx})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:2px;display:flex;align-items:center"><i class="ti ti-x"></i></button>
         </div>
       </div>
@@ -1201,6 +1281,7 @@ function renderDetail(d){
       <div style="display:flex;gap:2px">
         <button onclick="toggleActivityComment(${JSON.stringify(d.id)},${JSON.stringify(a.id)})" style="background:none;border:none;cursor:pointer;color:${a.comment?'var(--accent)':'var(--text-3)'};font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="Comentário"><i class="ti ti-message"></i></button>
         <button onclick="editActivity(${JSON.stringify(d.id)},${JSON.stringify(a.id)})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="Editar"><i class="ti ti-pencil"></i></button>
+        <button onclick="deleteActivity(${JSON.stringify(d.id)},${JSON.stringify(a.id)})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="Excluir"><i class="ti ti-trash"></i></button>
       </div>
     </div>`;
   }).join('') || '<p style="font-size:13px;color:var(--text-3)">Nenhuma atividade.</p>';
@@ -1213,6 +1294,7 @@ function renderDetail(d){
       </div>
       <div class="contact-name">${ct.name}</div>
       ${ct.role?`<div class="contact-role">${ct.role}</div>`:''}
+      ${ct.company?`<div class="contact-role" style="color:var(--text-3)">${ct.company}</div>`:''}
       <div class="contact-info">
         ${ct.email?`<div class="contact-info-item"><i class="ti ti-mail" style="font-size:13px"></i><a href="mailto:${ct.email}" style="color:var(--text-2);text-decoration:none">${ct.email}</a></div>`:''}
         ${ct.phone?`<div class="contact-info-item"><i class="ti ti-phone" style="font-size:13px"></i>${ct.phone}</div>`:''}
@@ -1296,6 +1378,16 @@ async function toggleActGlobal(dealId, actId) {
   render();
   const actView = document.getElementById('view-activities');
   if (actView && actView.style.display !== 'none') renderAllActivities();
+}
+
+// ── DELETE ACTIVITY ──
+async function deleteActivity(dealId, actId) {
+  if (!confirm('Excluir esta atividade?')) return;
+  const d = deals.find(x=>x.id===dealId); if(!d)return;
+  d.activities = d.activities.filter(a => a.id !== actId);
+  const ok = await saveDeal(d); if(!ok)return;
+  toast('Atividade excluída');
+  renderDetail(d); render();
 }
 
 // ── DELETE HISTORY ──
@@ -1485,7 +1577,7 @@ function openAddContact(dealId) {
   contactDealId = dealId;
   editingContactIdx = null;
   document.getElementById('modal-contact-title').textContent = 'Adicionar contato';
-  ['contact-name','contact-role','contact-email','contact-phone'].forEach(id => document.getElementById(id).value = '');
+  ['contact-name','contact-role','contact-company','contact-email','contact-phone'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('modal-contact').classList.add('open');
 }
 
@@ -1498,6 +1590,7 @@ function openEditContact(dealId, idx) {
   document.getElementById('contact-name').value = ct.name||'';
   document.getElementById('contact-role').value = ct.role||'';
   document.getElementById('contact-email').value = ct.email||'';
+  document.getElementById('contact-company').value = ct.company||'';
   document.getElementById('contact-phone').value = ct.phone||'';
   document.getElementById('modal-contact').classList.add('open');
 }
@@ -1510,6 +1603,7 @@ async function saveContact() {
   const ct = {
     name,
     role: document.getElementById('contact-role').value.trim(),
+    company: document.getElementById('contact-company').value.trim(),
     email: document.getElementById('contact-email').value.trim(),
     phone: document.getElementById('contact-phone').value.trim(),
   };
@@ -1627,10 +1721,14 @@ function exportCSV() {
 function setView(v) {
   document.getElementById('view-pipeline').style.display = v==='pipeline' ? 'block' : 'none';
   document.getElementById('view-activities').style.display = v==='activities' ? 'block' : 'none';
+  document.getElementById('view-users').style.display = v==='users' ? 'block' : 'none';
   document.getElementById('nav-pipeline').classList.toggle('active', v==='pipeline');
   document.getElementById('nav-activities').classList.toggle('active', v==='activities');
-  document.getElementById('page-title').textContent = v==='pipeline' ? 'Pipeline M&A' : 'Atividades';
+  document.getElementById('nav-users').classList.toggle('active', v==='users');
+  const titles = {pipeline:'Pipeline M&A', activities:'Atividades', users:'Usuários'};
+  document.getElementById('page-title').textContent = titles[v]||'';
   if (v==='activities') renderAllActivities();
+  if (v==='users') loadUsersView();
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
@@ -1683,8 +1781,101 @@ async function showApp() {
   const name = currentUser.user_metadata?.full_name || currentUser.email;
   document.getElementById('sb-username').textContent = name;
   document.getElementById('sb-avatar').textContent = name.charAt(0).toUpperCase();
+  await loadCurrentUserRole();
   await loadDeals();
 }
+
+
+// ── INLINE EDIT ──
+function inlineEditText(dealId, field, el) {
+  if (el.classList.contains('editing')) return;
+  el.classList.add('editing');
+  const d = deals.find(x=>x.id===dealId); if(!d) return;
+  const valEl = el.querySelector('.info-val') || el;
+  valEl.innerHTML = `<input class="inline-edit-input" value="${d[field]||''}" placeholder="${field}"/>`;
+  const inp = valEl.querySelector('input'); inp.focus(); inp.select();
+  const save = async () => { d[field]=inp.value.trim(); el.classList.remove('editing'); renderDetail(d); await saveDeal(d); };
+  inp.addEventListener('blur', save);
+  inp.addEventListener('keydown', e => { if(e.key==='Enter') inp.blur(); if(e.key==='Escape'){el.classList.remove('editing');renderDetail(d);} });
+}
+
+function inlineEditMrr(dealId, el) {
+  if (el.classList.contains('editing')) return;
+  el.classList.add('editing');
+  const d = deals.find(x=>x.id===dealId); if(!d) return;
+  el.innerHTML = `<input class="inline-edit-input" type="number" value="${d.mrr||''}" placeholder="MRR em R$" style="font-size:18px;color:var(--accent);font-weight:700"/>`;
+  const inp = el.querySelector('input'); inp.focus(); inp.select();
+  const save = async () => { d.mrr=parseFloat(inp.value)||0; el.classList.remove('editing'); renderDetail(d); await saveDeal(d); };
+  inp.addEventListener('blur', save);
+  inp.addEventListener('keydown', e => { if(e.key==='Enter') inp.blur(); if(e.key==='Escape'){el.classList.remove('editing');renderDetail(d);} });
+}
+
+function inlineEditOwner(dealId, el) {
+  if (el.classList.contains('editing')) return;
+  el.classList.add('editing');
+  const d = deals.find(x=>x.id===dealId); if(!d) return;
+  const valEl = el.querySelector('.info-val');
+  valEl.innerHTML = `<select class="inline-edit-input"><option value="">—</option>${crmUsers.map(u=>`<option value="${u}" ${u===d.owner?'selected':''}>${u}</option>`).join('')}</select>`;
+  const sel = valEl.querySelector('select'); sel.focus();
+  const save = async () => { d.owner=sel.value; el.classList.remove('editing'); renderDetail(d); await saveDeal(d); };
+  sel.addEventListener('blur', save); sel.addEventListener('change', save);
+}
+
+function inlineEditSelect(dealId, field, opts, el) {
+  if (el.classList.contains('editing')) return;
+  el.classList.add('editing');
+  const d = deals.find(x=>x.id===dealId); if(!d) return;
+  const valEl = el.querySelector('.info-val');
+  valEl.innerHTML = `<select class="inline-edit-input"><option value="">—</option>${opts.map(o=>`<option value="${o}" ${o===d[field]?'selected':''}>${o}</option>`).join('')}</select>`;
+  const sel = valEl.querySelector('select'); sel.focus();
+  const save = async () => { d[field]=sel.value; el.classList.remove('editing'); renderDetail(d); await saveDeal(d); };
+  sel.addEventListener('blur', save); sel.addEventListener('change', save);
+}
+
+function inlineEditState(dealId, el) {
+  if (el.classList.contains('editing')) return;
+  el.classList.add('editing');
+  const d = deals.find(x=>x.id===dealId); if(!d) return;
+  const valEl = el.querySelector('.info-val');
+  valEl.innerHTML = `<select class="inline-edit-input"><option value="">—</option>${UFS.map(uf=>`<option value="${uf}" ${uf===d.state?'selected':''}>${uf}</option>`).join('')}</select>`;
+  const sel = valEl.querySelector('select'); sel.focus();
+  sel.addEventListener('change', async () => { d.state=sel.value; d.city=''; el.classList.remove('editing'); renderDetail(d); await saveDeal(d); });
+  sel.addEventListener('blur', () => { el.classList.remove('editing'); renderDetail(d); });
+}
+
+async function inlineEditCity(dealId, el) {
+  if (el.classList.contains('editing')) return;
+  const d = deals.find(x=>x.id===dealId); if(!d) return;
+  if (!d.state) { toast('Selecione o estado primeiro.','error'); return; }
+  el.classList.add('editing');
+  const valEl = el.querySelector('.info-val');
+  valEl.innerHTML = `<select class="inline-edit-input"><option value="">Carregando...</option></select>`;
+  const sel = valEl.querySelector('select');
+  try {
+    const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${d.state}/municipios?orderBy=nome`);
+    const data = await res.json();
+    sel.innerHTML = `<option value="">—</option>${data.map(c=>`<option value="${c.nome}" ${c.nome===d.city?'selected':''}>${c.nome}</option>`).join('')}`;
+    sel.focus();
+  } catch(e) { sel.innerHTML='<option>Erro</option>'; }
+  const save = async () => { d.city=sel.value; el.classList.remove('editing'); renderDetail(d); await saveDeal(d); };
+  sel.addEventListener('blur', save); sel.addEventListener('change', save);
+}
+
+// ── KANBAN DRAG SCROLL ──
+(function() {
+  let isDown=false,startX,scrollLeft,target;
+  document.addEventListener('mousedown',e=>{
+    const kb=e.target.closest('.kanban'); if(!kb)return;
+    if(e.target.closest('.deal-card')||e.target.closest('button')||e.target.closest('.lane-add-btn'))return;
+    isDown=true;target=kb;startX=e.pageX-kb.offsetLeft;scrollLeft=kb.scrollLeft;kb.classList.add('dragging-scroll');
+  });
+  document.addEventListener('mouseleave',()=>{isDown=false;if(target)target.classList.remove('dragging-scroll');});
+  document.addEventListener('mouseup',()=>{isDown=false;if(target)target.classList.remove('dragging-scroll');});
+  document.addEventListener('mousemove',e=>{
+    if(!isDown||!target)return;e.preventDefault();
+    const x=e.pageX-target.offsetLeft;target.scrollLeft=scrollLeft-(x-startX)*1.5;
+  });
+})();
 
 init();
 </script>
