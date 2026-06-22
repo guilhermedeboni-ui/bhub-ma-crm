@@ -98,6 +98,10 @@
     .stage-drag-item { cursor: grab; transition: opacity .15s, box-shadow .15s; }
     .stage-drag-item:active { cursor: grabbing; }
     .stage-drag-item.dragging-stage { opacity: .4; }
+    /* ── DRAG AND DROP FUNIS ── */
+    .funil-item { cursor: pointer; transition: opacity .15s; }
+    .funil-item.dragging-funil { opacity: .4; }
+    .funil-item.drag-over-funil { border-top: 2px solid rgba(255,255,255,.5); }
     .stage-drag-item.drag-over-stage { box-shadow: 0 -3px 0 var(--accent); }
 
     /* ── FUNIL SECTION ── */
@@ -193,6 +197,7 @@
     /* ── MODALS ── */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 999; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(2px); }
     .modal-overlay.open { display: flex; }
+    .modal-overlay#modal-contact { z-index: 1100; }
     .modal { background: var(--bg-card); border-radius: var(--radius-xl); width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); border: 1px solid var(--border); }
     .modal-head { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--bg-card); z-index: 2; }
     .modal-title { font-size: 17px; font-weight: 700; color: var(--text); }
@@ -715,15 +720,44 @@ function renderFunilList() {
   const currentId = getCurrentFunilId();
   const list = document.getElementById('funil-list');
   if (!list) return;
-  list.innerHTML = funis.map(f => `
-    <div class="funil-item ${f.id === currentId ? 'active' : ''}" onclick="switchFunil('${f.id}')">
+  list.innerHTML = funis.map((f, idx) => `
+    <div class="funil-item ${f.id === currentId ? 'active' : ''}" draggable="true" data-funil-id="${f.id}" data-funil-idx="${idx}" onclick="switchFunil('${f.id}')">
+      <i class="ti ti-grip-vertical" style="font-size:13px;color:rgba(255,255,255,.2);flex-shrink:0;cursor:grab" onclick="event.stopPropagation()"></i>
       <i class="ti ti-git-branch" style="font-size:15px"></i>
       <span style="flex:1">${f.name}</span>
-      ${f.id !== 'default' ? `
-        <button onclick="event.stopPropagation();openEditFunil('${f.id}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:13px;padding:2px;display:flex;align-items:center" title="Editar"><i class="ti ti-pencil"></i></button>
-        <button onclick="event.stopPropagation();deleteFunil('${f.id}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:13px;padding:2px;display:flex;align-items:center" title="Excluir"><i class="ti ti-trash"></i></button>
-      ` : ''}
+      <button onclick="event.stopPropagation();openEditFunil('${f.id}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:13px;padding:2px;display:flex;align-items:center" title="Editar"><i class="ti ti-pencil"></i></button>
+      ${funis.length > 1 ? `<button onclick="event.stopPropagation();deleteFunil('${f.id}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:13px;padding:2px;display:flex;align-items:center" title="Excluir"><i class="ti ti-trash"></i></button>` : ''}
     </div>`).join('');
+
+  // Drag and drop reorder
+  let dragFunilIdx = null;
+  list.querySelectorAll('.funil-item').forEach(el => {
+    el.addEventListener('dragstart', e => {
+      dragFunilIdx = parseInt(el.dataset.funilIdx);
+      el.classList.add('dragging-funil');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    el.addEventListener('dragend', () => {
+      el.classList.remove('dragging-funil');
+      list.querySelectorAll('.funil-item').forEach(e => e.classList.remove('drag-over-funil'));
+    });
+    el.addEventListener('dragover', e => {
+      e.preventDefault();
+      list.querySelectorAll('.funil-item').forEach(e => e.classList.remove('drag-over-funil'));
+      el.classList.add('drag-over-funil');
+    });
+    el.addEventListener('drop', async e => {
+      e.preventDefault();
+      const toIdx = parseInt(el.dataset.funilIdx);
+      if (dragFunilIdx === null || dragFunilIdx === toIdx) return;
+      const funis = getFunis();
+      const [moved] = funis.splice(dragFunilIdx, 1);
+      funis.splice(toIdx, 0, moved);
+      await saveFunisStorage(funis);
+      renderFunilList();
+      toast('Funis reordenados!');
+    });
+  });
 }
 
 function switchFunil(id) {
@@ -732,6 +766,8 @@ function switchFunil(id) {
   renderFunilList();
   populateFilters();
   render();
+  const actView = document.getElementById('view-activities');
+  if (actView && actView.style.display !== 'none') renderAllActivities();
 }
 
 function openAddFunil() {
@@ -966,7 +1002,11 @@ async function saveEditOpt(i) {
   const input = document.getElementById('edit-opt-input-'+i);
   if (!input) return;
   const newVal = input.value.trim();
-  const originalVal = input.dataset.original;
+  // Decode HTML entities from data-original attribute
+  const rawOriginal = input.dataset.original || '';
+  const tmp = document.createElement('textarea');
+  tmp.innerHTML = rawOriginal;
+  const originalVal = tmp.value;
   if (!newVal || !originalVal) return;
   // Get raw cache (unsorted) to find and replace the correct value
   const raw = optsCache[currentOptsKey] || DEFAULTS[currentOptsKey] || [];
@@ -1162,7 +1202,7 @@ function renderDetail(d){
         <span class="hist-date">${h.date}</span>
         ${h.pinned?'<span class="hist-pin-badge">Fixado</span>':''}
         <div style="display:flex;gap:2px;margin-left:auto">
-          <button onclick="togglePinHistory(${JSON.stringify(d.id)},${origIdx})" style="background:none;border:none;cursor:pointer;color:${h.pinned?'#F59E0B':'var(--text-3)'};font-size:14px;padding:2px;display:flex;align-items:center" title="${h.pinned?'Desafixar':'Fixar'}"><i class="ti ti-pin${h.pinned?'':'-off'}"></i></button>
+          <button onclick="togglePinHistory(${JSON.stringify(d.id)},${origIdx})" style="background:none;border:none;cursor:pointer;color:${h.pinned?'#F59E0B':'var(--text-3)'};font-size:14px;padding:2px;display:flex;align-items:center" title="${h.pinned?'Desafixar':'Fixar'}"><i class="ti ti-pin"></i></button>
           <button onclick="deleteHistory(${JSON.stringify(d.id)},${origIdx})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:2px;display:flex;align-items:center"><i class="ti ti-x"></i></button>
         </div>
       </div>
