@@ -939,6 +939,7 @@ function toggleDark() {
   html.setAttribute('data-theme', isDark?'light':'dark');
   document.getElementById('theme-icon').className = isDark ? 'ti ti-moon' : 'ti ti-sun';
   localStorage.setItem('crm-theme', isDark?'light':'dark');
+  render(); // re-render kanban with correct colors
 }
 function initTheme() {
   const saved = localStorage.getItem('crm-theme')||'light';
