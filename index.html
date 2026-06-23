@@ -1261,7 +1261,10 @@ function renderDetail(d){
     .sort((a,b)=>{
       if(a.pinned && !b.pinned) return -1;
       if(!a.pinned && b.pinned) return 1;
-      return b._origIdx - a._origIdx; // newest first
+      // Sort by date descending (newest first)
+      const da = new Date(a.date?.split(',')[0]?.split('/').reverse().join('-')||0);
+      const db = new Date(b.date?.split(',')[0]?.split('/').reverse().join('-')||0);
+      return db - da || b._origIdx - a._origIdx;
     });
 
   const histHtml = sortedHistory.length ? sortedHistory.map(h=>{
