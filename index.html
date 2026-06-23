@@ -146,6 +146,7 @@
     .filter-group select:focus, .filter-group input:focus { border-color: var(--accent); }
 
     /* ── KANBAN ── */
+    .view-pipeline-wrap { background: var(--bg); min-height: calc(100vh - 58px); padding: 16px 24px; }
     .kanban { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 12px; min-height: calc(100vh - 200px); align-items: flex-start; cursor: grab; user-select: none; }
     .kanban.dragging-scroll { cursor: grabbing; }
     .kanban::-webkit-scrollbar { height: 6px; }
@@ -462,7 +463,7 @@
       </div>
 
       <!-- PIPELINE VIEW -->
-      <div id="view-pipeline">
+      <div id="view-pipeline" class="view-pipeline-wrap">
         <div id="kanban" class="kanban"></div>
       </div>
 
@@ -698,7 +699,8 @@ function getCurrentFunil() { const funis = getFunis(); return funis.find(f => f.
 let STAGES = getCurrentFunil().stages;
 let editingFunilId = null;
 let tempFunilStages = [];
-const STAGE_COLORS_BASE = {
+// Light mode colors
+const STAGE_COLORS_LIGHT = {
   'Prospecção':             {bg:'#EFF6FF',bd:'#3B82F6',tx:'#1D4ED8'},
   'Reunião':                {bg:'#F5F3FF',bd:'#8B5CF6',tx:'#6D28D9'},
   'NDA':                    {bg:'#FFFBEB',bd:'#F59E0B',tx:'#B45309'},
@@ -709,15 +711,37 @@ const STAGE_COLORS_BASE = {
   'Ganho':                  {bg:'#F0FDF4',bd:'#16A34A',tx:'#14532D'},
   'Perdido':                {bg:'#FEF2F2',bd:'#EF4444',tx:'#B91C1C'},
 };
-const COLOR_PALETTE = [
+// Dark mode colors (darker backgrounds, same accent borders, lighter text)
+const STAGE_COLORS_DARK = {
+  'Prospecção':             {bg:'#1e2a3a',bd:'#3B82F6',tx:'#60A5FA'},
+  'Reunião':                {bg:'#221e3a',bd:'#8B5CF6',tx:'#A78BFA'},
+  'NDA':                    {bg:'#2a2515',bd:'#F59E0B',tx:'#FCD34D'},
+  'Análise de Viabilidade': {bg:'#162a1e',bd:'#22C55E',tx:'#4ADE80'},
+  'Proposta':               {bg:'#2a1e15',bd:'#F97316',tx:'#FB923C'},
+  'Diligência':             {bg:'#2a1525',bd:'#EC4899',tx:'#F472B6'},
+  'Contrato':               {bg:'#152a22',bd:'#10B981',tx:'#34D399'},
+  'Ganho':                  {bg:'#162a1e',bd:'#16A34A',tx:'#4ADE80'},
+  'Perdido':                {bg:'#2a1515',bd:'#EF4444',tx:'#F87171'},
+};
+const COLOR_PALETTE_LIGHT = [
   {bg:'#EFF6FF',bd:'#3B82F6',tx:'#1D4ED8'},{bg:'#F5F3FF',bd:'#8B5CF6',tx:'#6D28D9'},
   {bg:'#FFFBEB',bd:'#F59E0B',tx:'#B45309'},{bg:'#F0FDF4',bd:'#22C55E',tx:'#15803D'},
   {bg:'#FFF7ED',bd:'#F97316',tx:'#C2410C'},{bg:'#FDF2F8',bd:'#EC4899',tx:'#BE185D'},
   {bg:'#ECFDF5',bd:'#10B981',tx:'#065F46'},{bg:'#F0FDF4',bd:'#16A34A',tx:'#14532D'},
   {bg:'#FEF2F2',bd:'#EF4444',tx:'#B91C1C'},{bg:'#F0F9FF',bd:'#0EA5E9',tx:'#0369A1'},
 ];
+const COLOR_PALETTE_DARK = [
+  {bg:'#1e2a3a',bd:'#3B82F6',tx:'#60A5FA'},{bg:'#221e3a',bd:'#8B5CF6',tx:'#A78BFA'},
+  {bg:'#2a2515',bd:'#F59E0B',tx:'#FCD34D'},{bg:'#162a1e',bd:'#22C55E',tx:'#4ADE80'},
+  {bg:'#2a1e15',bd:'#F97316',tx:'#FB923C'},{bg:'#2a1525',bd:'#EC4899',tx:'#F472B6'},
+  {bg:'#152a22',bd:'#10B981',tx:'#34D399'},{bg:'#162a1e',bd:'#16A34A',tx:'#4ADE80'},
+  {bg:'#2a1515',bd:'#EF4444',tx:'#F87171'},{bg:'#152030',bd:'#0EA5E9',tx:'#38BDF8'},
+];
 function getStageColor(stage, idx) {
-  return STAGE_COLORS_BASE[stage] || COLOR_PALETTE[idx % COLOR_PALETTE.length];
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const base = isDark ? STAGE_COLORS_DARK : STAGE_COLORS_LIGHT;
+  const palette = isDark ? COLOR_PALETTE_DARK : COLOR_PALETTE_LIGHT;
+  return base[stage] || palette[idx % palette.length];
 }
 const STAGE_COLORS = new Proxy({}, { get: (t, stage) => getStageColor(stage, STAGES.indexOf(stage)) });
 const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
@@ -1294,7 +1318,7 @@ function renderDetail(d){
       <div style="flex:1">
         <div class="act-title-txt ${a.done?'done':''}">${a.title}</div>
         <div class="act-meta"><span ${od?'class="overdue"':''}>${fmtDate(a.date)}</span>${od?' · <span class="overdue">VENCIDA</span>':''}${a.owner?` · <span style="color:var(--text-3)">${a.owner}</span>`:''}</div>
-        ${a.comment?`<div style="font-size:12px;color:var(--text-2);margin-top:4px;background:var(--bg-card);border-radius:5px;padding:6px 8px;border:1px solid var(--border);white-space:pre-wrap">${a.comment}${a.commentBy?`<div style='font-size:10px;color:var(--text-3);margin-top:4px'>— ${a.commentBy}</div>`:''}</div>`:''}
+        ${a.comment?`<div style="font-size:12px;color:var(--text-2);margin-top:4px;background:var(--bg-card);border-radius:5px;padding:6px 8px;border:1px solid var(--border);white-space:pre-wrap">${a.comment}</div>`:''}
       </div>
       <div style="display:flex;gap:2px">
         <button onclick="toggleActivityComment(${JSON.stringify(d.id)},${JSON.stringify(a.id)})" style="background:none;border:none;cursor:pointer;color:${a.comment?'var(--accent)':'var(--text-3)'};font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="Comentário"><i class="ti ti-message"></i></button>
