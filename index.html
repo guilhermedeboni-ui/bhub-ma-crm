@@ -505,8 +505,11 @@
               <input type="checkbox" id="show-done-acts" onchange="renderAllActivities()" style="width:auto"> Mostrar concluídas
             </label>
             <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);cursor:pointer">
-              <input type="checkbox" id="show-my-acts" onchange="renderAllActivities()" style="width:auto" checked> Apenas minhas
+              <input type="checkbox" id="show-my-acts" onchange="toggleMyActsFilter()" style="width:auto" checked> Apenas minhas
             </label>
+            <select id="filter-act-user" onchange="renderAllActivities()" style="display:none;font-family:var(--font);font-size:12px;border:1px solid var(--border-md);border-radius:var(--radius);padding:4px 8px;background:var(--bg-card);color:var(--text)">
+              <option value="">Todos os usuários</option>
+            </select>
           </div>
           <div class="acts-toolbar">
             <button class="acts-period-btn active" id="period-all" onclick="setActsPeriod('all')">Todas</button>
@@ -1210,11 +1213,13 @@ function renderAllActivities(){
   if (!list) return;
   const showDone = document.getElementById('show-done-acts')?.checked || false;
   const showMine = document.getElementById('show-my-acts')?.checked;
+  const filterUser = document.getElementById('filter-act-user')?.value || '';
   const myActsName = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
   let all=[];
   deals.forEach(d=>d.activities.forEach(a=>all.push({...a,dealId:d.id,dealName:d.company})));
   if (!showDone) all = all.filter(a => !a.done);
   if (showMine) all = all.filter(a => !a.owner || a.owner === myActsName);
+  else if (filterUser) all = all.filter(a => a.owner === filterUser);
   all = filterByPeriod(all, currentActsPeriod);
   all.sort((a,b)=>{ if(a.done!==b.done)return a.done?1:-1; return (a.date||'').localeCompare(b.date||''); });
   if(!all.length){
@@ -1282,7 +1287,7 @@ function renderDetail(d){
       <div style="flex:1">
         <div class="act-title-txt ${a.done?'done':''}">${a.title}</div>
         <div class="act-meta"><span ${od?'class="overdue"':''}>${fmtDate(a.date)}</span>${od?' · <span class="overdue">VENCIDA</span>':''}${a.owner?` · <span style="color:var(--text-3)">${a.owner}</span>`:''}</div>
-        ${a.comment?`<div style="font-size:12px;color:var(--text-2);margin-top:4px;background:var(--bg-card);border-radius:5px;padding:6px 8px;border:1px solid var(--border)">${a.comment}${a.commentBy?`<span style='font-size:10px;color:var(--text-3);margin-left:6px'>— ${a.commentBy}</span>`:''}</div>`:''}
+        ${a.comment?`<div style="font-size:12px;color:var(--text-2);margin-top:4px;background:var(--bg-card);border-radius:5px;padding:6px 8px;border:1px solid var(--border);white-space:pre-wrap">${a.comment}${a.commentBy?`<div style='font-size:10px;color:var(--text-3);margin-top:4px'>— ${a.commentBy}</div>`:''}</div>`:''}
       </div>
       <div style="display:flex;gap:2px">
         <button onclick="toggleActivityComment(${JSON.stringify(d.id)},${JSON.stringify(a.id)})" style="background:none;border:none;cursor:pointer;color:${a.comment?'var(--accent)':'var(--text-3)'};font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="Comentário"><i class="ti ti-message"></i></button>
@@ -1371,7 +1376,7 @@ function renderDetail(d){
     <div class="section-title"><i class="ti ti-history" style="font-size:14px"></i>Histórico de interações</div>
     <div style="background:var(--bg-surface);border-radius:var(--radius);padding:14px;margin-bottom:12px;border:1px solid var(--border)">
       <div class="hist-form">
-        <textarea id="hist-text-inp" placeholder="Registre a interação ou anote informações relevantes..."></textarea>
+        <textarea id="hist-text-inp" placeholder="Registre a interação ou anote informações relevantes..." style="font-family:var(--font);font-size:13px;resize:vertical;min-height:60px"></textarea>
         <button class="btn-add" onclick="addHistory(${JSON.stringify(d.id)})"><i class="ti ti-send"></i> Registrar</button>
       </div>
     </div>
@@ -1700,7 +1705,7 @@ function toggleActivityComment(dealId, actId) {
   div.className = 'act-comment-input';
   div.style.cssText = 'margin-top:8px;width:100%';
   div.innerHTML = `<div style="display:flex;gap:6px;align-items:flex-end">
-    <textarea id="comment-inp-${actId}" placeholder="Adicione um comentário..." style="flex:1;min-height:52px;font-size:12px;padding:6px 9px;resize:vertical">${a.comment||''}</textarea>
+    <textarea id="comment-inp-${actId}" placeholder="Adicione um comentário..." style="flex:1;min-height:52px;font-size:12px;padding:6px 9px;resize:vertical;font-family:var(--font)">${a.comment||''}</textarea>
     <button onclick="saveActivityComment(${JSON.stringify(dealId)},${JSON.stringify(actId)})" style="background:var(--brand);border:none;color:#fff;font-size:11px;font-weight:600;font-family:var(--font);padding:7px 12px;border-radius:var(--radius);cursor:pointer;white-space:nowrap">Salvar</button>
   </div>`;
   itemEl.querySelector('[style*="flex:1"]').appendChild(div);
@@ -1713,6 +1718,7 @@ async function saveActivityComment(dealId, actId) {
   const inp = document.getElementById('comment-inp-'+actId);
   if (!inp) return;
   a.comment = inp.value.trim();
+  a.commentBy = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
   const ok = await saveDeal(d); if(!ok)return;
   toast('Comentário salvo!');
   renderDetail(d);
@@ -1929,6 +1935,21 @@ function toggleMyDeals() {
   render();
 }
 
+
+
+function toggleMyActsFilter() {
+  const showMine = document.getElementById('show-my-acts')?.checked;
+  const userSelect = document.getElementById('filter-act-user');
+  if (userSelect) {
+    userSelect.style.display = showMine ? 'none' : 'inline-block';
+    if (!showMine) {
+      // populate users
+      userSelect.innerHTML = '<option value="">Todos os usuários</option>' +
+        crmUsers.map(u => `<option value="${u}">${u}</option>`).join('');
+    }
+  }
+  renderAllActivities();
+}
 
 // ── MIGRATE DONE ACTIVITIES TO HISTORY ──
 async function migrateDoneActivities() {
