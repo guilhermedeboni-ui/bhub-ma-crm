@@ -1269,7 +1269,7 @@ function renderDetail(d){
           <button onclick="deleteHistory(${JSON.stringify(d.id)},${origIdx})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:2px;display:flex;align-items:center"><i class="ti ti-x"></i></button>
         </div>
       </div>
-      <div class="hist-text">${h.text}</div>
+      <div class="hist-text" style="white-space:pre-wrap">${h.text}</div>
     </div>`;
   }).join('') : '<p style="font-size:13px;color:var(--text-3)">Nenhum registro.</p>';
 
@@ -1405,7 +1405,7 @@ async function toggleAct(dealId,actId){
   if(!a.done){
     // Concluindo: migra para histórico
     a.done=true;
-    const histText = `✅ Atividade concluída: "${a.title}"${a.owner?' (resp: '+a.owner+')':''}`;
+    const histText = `✅ Atividade concluída: "${a.title}"${a.owner?' (resp: '+a.owner+')':''}${a.comment?'\n💬 '+a.comment:''}`;
     if(!d.history) d.history=[];
     d.history.unshift({date:new Date().toLocaleString('pt-BR'),type:'Atividade',text:histText,author});
   } else {
@@ -1420,7 +1420,7 @@ async function toggleActGlobal(dealId, actId) {
   const a = d.activities.find(x => x.id === actId); if (!a) return;
   a.done = !a.done;
   if (a.done) {
-    const histText = `✅ Atividade concluída: "${a.title}"${a.owner?' (resp: '+a.owner+')':''}`;
+    const histText = `✅ Atividade concluída: "${a.title}"${a.owner?' (resp: '+a.owner+')':''}${a.comment?'\n💬 '+a.comment:''}`;
     if(!d.history) d.history=[];
     d.history.unshift({date:new Date().toLocaleString('pt-BR'),type:'Atividade',text:histText,author});
   }
@@ -1833,6 +1833,7 @@ async function showApp() {
   document.getElementById('sb-avatar').textContent = name.charAt(0).toUpperCase();
   await loadCurrentUserRole();
   await loadDeals();
+  await migrateDoneActivities();
 }
 
 
@@ -1925,6 +1926,28 @@ function toggleMyDeals() {
   const btn = document.getElementById('btn-my-deals');
   if (btn) { btn.style.background=myDealsOnly?'var(--accent)':''; btn.style.color=myDealsOnly?'#fff':''; btn.style.borderColor=myDealsOnly?'var(--accent)':''; }
   render();
+}
+
+
+// ── MIGRATE DONE ACTIVITIES TO HISTORY ──
+async function migrateDoneActivities() {
+  let changed = false;
+  for (const d of deals) {
+    const doneWithComment = d.activities.filter(a => a.done && a.comment);
+    if (!doneWithComment.length) continue;
+    for (const a of doneWithComment) {
+      const histText = `✅ Atividade concluída: "${a.title}"${a.owner?' (resp: '+a.owner+')':''}\n💬 ${a.comment}`;
+      if (!d.history) d.history = [];
+      // Only add if not already in history
+      const alreadyMigrated = d.history.some(h => h.text && h.text.includes(a.title) && h.text.includes('💬'));
+      if (!alreadyMigrated) {
+        d.history.unshift({date: a.date||new Date().toLocaleString('pt-BR'), type:'Atividade', text:histText, author: a.owner||''});
+        changed = true;
+      }
+    }
+    if (changed) await saveDeal(d);
+    changed = false;
+  }
 }
 
 // ── INLINE EDIT ──
