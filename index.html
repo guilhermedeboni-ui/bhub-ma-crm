@@ -1208,13 +1208,16 @@ function renderAllActivities(){
   const list=document.getElementById('all-activities-list');
   if (!list) return;
   const showDone = document.getElementById('show-done-acts')?.checked || false;
+  const showMine = document.getElementById('show-my-acts')?.checked;
+  const myActsName = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
   let all=[];
   deals.forEach(d=>d.activities.forEach(a=>all.push({...a,dealId:d.id,dealName:d.company})));
   if (!showDone) all = all.filter(a => !a.done);
+  if (showMine) all = all.filter(a => !a.owner || a.owner === myActsName);
   all = filterByPeriod(all, currentActsPeriod);
   all.sort((a,b)=>{ if(a.done!==b.done)return a.done?1:-1; return (a.date||'').localeCompare(b.date||''); });
   if(!all.length){
-    list.innerHTML=`<tr><td colspan="5"><div class="empty"><i class="ti ti-calendar-off"></i><p>Nenhuma atividade encontrada.</p></div></td></tr>`;
+    list.innerHTML=`<tr><td colspan="6"><div class="empty"><i class="ti ti-calendar-off"></i><p>Nenhuma atividade encontrada.</p></div></td></tr>`;
     return;
   }
   list.innerHTML=all.map(a=>{
@@ -1232,6 +1235,7 @@ function renderAllActivities(){
         ${a.comment?`<div style="font-size:11px;color:var(--text-3);margin-top:2px">${a.comment}</div>`:''}
       </td>
       <td><span class="act-deal-badge">${a.dealName}</span></td>
+      <td style="font-size:12px;color:var(--text-2)">${a.owner||'<span style="color:var(--text-3)">—</span>'}</td>
       <td style="white-space:nowrap;${od?'color:#EF4444;font-weight:600':''}">${fmtDateShort(a.date)}</td>
       <td><span style="font-size:11px;font-weight:600;color:${statusColor}">${statusText}</span></td>
     </tr>`;
@@ -1251,7 +1255,7 @@ function renderDetail(d){
     .sort((a,b)=>{
       if(a.pinned && !b.pinned) return -1;
       if(!a.pinned && b.pinned) return 1;
-      return 0;
+      return b._origIdx - a._origIdx; // newest first
     });
 
   const histHtml = sortedHistory.length ? sortedHistory.map(h=>{
@@ -1269,7 +1273,8 @@ function renderDetail(d){
     </div>`;
   }).join('') : '<p style="font-size:13px;color:var(--text-3)">Nenhum registro.</p>';
 
-  const actHtml = d.activities.map(a=>{
+  const pendingActs = [...d.activities].filter(a=>!a.done).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const actHtml = pendingActs.map(a=>{
     const od=!a.done&&isOverdue(a.date);
     return `<div class="act-item" data-act-id="${a.id}">
       <div class="act-check ${a.done?'done':''}" onclick="toggleAct(${JSON.stringify(d.id)},${JSON.stringify(a.id)})"><i class="ti ti-check"></i></div>
@@ -1284,7 +1289,7 @@ function renderDetail(d){
         <button onclick="deleteActivity(${JSON.stringify(d.id)},${JSON.stringify(a.id)})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="Excluir"><i class="ti ti-trash"></i></button>
       </div>
     </div>`;
-  }).join('') || '<p style="font-size:13px;color:var(--text-3)">Nenhuma atividade.</p>';
+  }).join('') || '<p style="font-size:13px;color:var(--text-3)">Nenhuma atividade pendente.</p>';
 
   const contactsHtml = contacts.length ? contacts.map((ct,i)=>`
     <div class="contact-card">
@@ -1303,21 +1308,46 @@ function renderDetail(d){
 
   const _currentUserName = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
   document.getElementById('detail-modal-body').innerHTML=`
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:12px">
-      <div>
-        <div class="detail-company">${d.company}</div>
-        ${d.mrr?`<div class="detail-mrr">${fmtMrr(d.mrr)} MRR</div>`:''}
-      </div>
-      <button onclick="openEditDeal(${JSON.stringify(d.id)})" class="btn-secondary" style="white-space:nowrap;flex-shrink:0"><i class="ti ti-pencil" style="font-size:14px"></i> Editar</button>
+    <div style="margin-bottom:16px">
+      <div class="detail-company" onclick="inlineEditText(${JSON.stringify(d.id)},'company',this)" title="Clique para editar" style="cursor:pointer">${d.company}</div>
+      <div onclick="inlineEditMrr(${JSON.stringify(d.id)},this)" title="Clique para editar" style="cursor:pointer">${d.mrr?`<div class="detail-mrr">${fmtMrr(d.mrr)} MRR</div>`:'<div style="color:var(--text-3);font-size:13px;margin-top:4px">+ Adicionar MRR</div>'}</div>
     </div>
     <div class="info-grid">
-      ${d.owner?`<div class="info-item"><div class="info-key">Responsável</div><div class="info-val">${d.owner}</div></div>`:''}
-      ${d.state?`<div class="info-item"><div class="info-key">Estado</div><div class="info-val">${d.state}</div></div>`:''}
-      ${d.city?`<div class="info-item"><div class="info-key">Município</div><div class="info-val">${d.city}</div></div>`:''}
-      ${d.segment?`<div class="info-item"><div class="info-key">Segmento</div><div class="info-val">${d.segment}</div></div>`:''}
-      ${d.subsegment?`<div class="info-item"><div class="info-key">Sub-segmento</div><div class="info-val">${d.subsegment}</div></div>`:''}
-      ${d.origem?`<div class="info-item"><div class="info-key">Origem</div><div class="info-val">${d.origem}</div></div>`:''}
-      ${d.origem_detail?`<div class="info-item"><div class="info-key">Origem detalhada</div><div class="info-val">${d.origem_detail}</div></div>`:''}
+      <div class="info-item" onclick="inlineEditOwner(${JSON.stringify(d.id)},this)" title="Clique para editar">
+        <div class="info-key">Responsável</div>
+        <div class="info-val">${d.owner||'<span style="color:var(--text-3)">—</span>'}</div>
+        <div class="info-edit-hint">Clique para editar</div>
+      </div>
+      <div class="info-item" onclick="inlineEditSelect(${JSON.stringify(d.id)},'segment',getOpts('segmentos'),this)" title="Clique para editar">
+        <div class="info-key">Segmento</div>
+        <div class="info-val">${d.segment||'<span style="color:var(--text-3)">—</span>'}</div>
+        <div class="info-edit-hint">Clique para editar</div>
+      </div>
+      <div class="info-item" onclick="inlineEditText(${JSON.stringify(d.id)},'subsegment',this)" title="Clique para editar">
+        <div class="info-key">Sub-segmento</div>
+        <div class="info-val">${d.subsegment||'<span style="color:var(--text-3)">—</span>'}</div>
+        <div class="info-edit-hint">Clique para editar</div>
+      </div>
+      <div class="info-item" onclick="inlineEditSelect(${JSON.stringify(d.id)},'origem',getOpts('origens'),this)" title="Clique para editar">
+        <div class="info-key">Origem</div>
+        <div class="info-val">${d.origem||'<span style="color:var(--text-3)">—</span>'}</div>
+        <div class="info-edit-hint">Clique para editar</div>
+      </div>
+      <div class="info-item" onclick="inlineEditSelect(${JSON.stringify(d.id)},'origem_detail',getOpts('origens_detalhadas'),this)" title="Clique para editar">
+        <div class="info-key">Origem detalhada</div>
+        <div class="info-val">${d.origem_detail||'<span style="color:var(--text-3)">—</span>'}</div>
+        <div class="info-edit-hint">Clique para editar</div>
+      </div>
+      <div class="info-item" onclick="inlineEditState(${JSON.stringify(d.id)},this)" title="Clique para editar">
+        <div class="info-key">Estado</div>
+        <div class="info-val">${d.state||'<span style="color:var(--text-3)">—</span>'}</div>
+        <div class="info-edit-hint">Clique para editar</div>
+      </div>
+      <div class="info-item" onclick="inlineEditCity(${JSON.stringify(d.id)},this)" title="Clique para editar">
+        <div class="info-key">Município</div>
+        <div class="info-val">${d.city||'<span style="color:var(--text-3)">—</span>'}</div>
+        <div class="info-edit-hint">Clique para editar</div>
+      </div>
     </div>
     <div class="section-title"><i class="ti ti-flag" style="font-size:14px"></i>Etapa do funil</div>
     <select style="font-weight:600;border-color:${c.bd};color:${c.tx}" onchange="changeStage(${JSON.stringify(d.id)},this.value)">
@@ -1368,12 +1398,32 @@ async function addActivity(dealId){
   const ok=await saveDeal(d);if(!ok)return;
   toast('Atividade adicionada');renderDetail(d);render();
 }
-async function toggleAct(dealId,actId){const d=deals.find(x=>x.id===dealId);if(!d)return;const a=d.activities.find(x=>x.id===actId);if(!a)return;a.done=!a.done;if(a.done)d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Atividade concluída: "'+a.title+'".'});await saveDeal(d);renderDetail(d);render();}
+async function toggleAct(dealId,actId){
+  const d=deals.find(x=>x.id===dealId);if(!d)return;
+  const a=d.activities.find(x=>x.id===actId);if(!a)return;
+  const author=currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
+  if(!a.done){
+    // Concluindo: migra para histórico
+    a.done=true;
+    const histText = `✅ Atividade concluída: "${a.title}"${a.owner?' (resp: '+a.owner+')':''}`;
+    if(!d.history) d.history=[];
+    d.history.unshift({date:new Date().toLocaleString('pt-BR'),type:'Atividade',text:histText,author});
+  } else {
+    // Reabrindo
+    a.done=false;
+  }
+  await saveDeal(d);renderDetail(d);render();
+}
 async function toggleActGlobal(dealId, actId) {
+  const author=currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
   const d = deals.find(x => x.id === dealId); if (!d) return;
   const a = d.activities.find(x => x.id === actId); if (!a) return;
   a.done = !a.done;
-  if (a.done) d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Atividade concluída: "'+a.title+'".'});
+  if (a.done) {
+    const histText = `✅ Atividade concluída: "${a.title}"${a.owner?' (resp: '+a.owner+')':''}`;
+    if(!d.history) d.history=[];
+    d.history.unshift({date:new Date().toLocaleString('pt-BR'),type:'Atividade',text:histText,author});
+  }
   await saveDeal(d);
   render();
   const actView = document.getElementById('view-activities');
