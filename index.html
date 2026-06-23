@@ -1418,7 +1418,7 @@ async function toggleAct(dealId,actId){
   if(!a.done){
     // Concluindo: migra para histórico
     a.done=true;
-    const histText = `✅ Atividade concluída: "${a.title}"${a.owner?' (resp: '+a.owner+')':''}${a.comment?'\n💬 '+a.comment:''}`;
+    const histText = `✅ Atividade concluída: "${a.title}"${a.comment?'\n💬 '+a.comment:''}`;
     if(!d.history) d.history=[];
     d.history.unshift({date:new Date().toLocaleString('pt-BR'),type:'Atividade',text:histText,author});
   } else {
@@ -1433,7 +1433,7 @@ async function toggleActGlobal(dealId, actId) {
   const a = d.activities.find(x => x.id === actId); if (!a) return;
   a.done = !a.done;
   if (a.done) {
-    const histText = `✅ Atividade concluída: "${a.title}"${a.owner?' (resp: '+a.owner+')':''}${a.comment?'\n💬 '+a.comment:''}`;
+    const histText = `✅ Atividade concluída: "${a.title}"${a.comment?'\n💬 '+a.comment:''}`;
     if(!d.history) d.history=[];
     d.history.unshift({date:new Date().toLocaleString('pt-BR'),type:'Atividade',text:histText,author});
   }
@@ -1965,7 +1965,7 @@ async function migrateDoneActivities() {
     const doneWithComment = d.activities.filter(a => a.done && a.comment);
     if (!doneWithComment.length) continue;
     for (const a of doneWithComment) {
-      const histText = `✅ Atividade concluída: "${a.title}"${a.owner?' (resp: '+a.owner+')':''}\n💬 ${a.comment}`;
+      const histText = `✅ Atividade concluída: "${a.title}"\n💬 ${a.comment}`;
       if (!d.history) d.history = [];
       // Only add if not already in history
       const alreadyMigrated = d.history.some(h => h.text && h.text.includes(a.title) && h.text.includes('💬'));
