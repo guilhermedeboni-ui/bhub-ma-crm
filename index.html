@@ -1261,10 +1261,14 @@ function renderDetail(d){
     .sort((a,b)=>{
       if(a.pinned && !b.pinned) return -1;
       if(!a.pinned && b.pinned) return 1;
-      // Sort by date descending (newest first)
-      const da = new Date(a.date?.split(',')[0]?.split('/').reverse().join('-')||0);
-      const db = new Date(b.date?.split(',')[0]?.split('/').reverse().join('-')||0);
-      return db - da || b._origIdx - a._origIdx;
+      // Parse "dd/mm/yyyy, hh:mm:ss" or "yyyy-mm-dd"
+      const parseDate = str => {
+        if (!str) return 0;
+        const m = str.match(/(\d{2})\/(\d{2})\/(\d{4}),?\s*(\d{2}:\d{2}:\d{2})?/);
+        if (m) return new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]||'00:00:00'}`).getTime();
+        return new Date(str).getTime() || 0;
+      };
+      return parseDate(b.date) - parseDate(a.date) || b._origIdx - a._origIdx;
     });
 
   const histHtml = sortedHistory.length ? sortedHistory.map(h=>{
