@@ -199,6 +199,7 @@
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 999; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(2px); }
     .modal-overlay.open { display: flex; }
     .modal-overlay#modal-contact { z-index: 1100; }
+    .modal-overlay#modal-opts { z-index: 1200; }
     .modal { background: var(--bg-card); border-radius: var(--radius-xl); width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); border: 1px solid var(--border); }
     .modal.fullscreen { max-width: 100%; max-height: 100vh; height: 100vh; border-radius: 0; margin: 0; }
     .modal-overlay.fullscreen { padding: 0; align-items: stretch; }
@@ -585,12 +586,19 @@
     </div>
     <div class="modal-body">
       <div class="form-grid">
+        <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)">Dados da Pessoa</div>
         <div class="form-group full"><label>Nome da Pessoa *</label><input id="contact-name" placeholder="Ex: João Silva"/></div>
-        <div class="form-group full"><label>Cargo da Pessoa</label><input id="contact-role" placeholder="Ex: Sócio-fundador"/></div>
-        <div class="form-group full"><label>Nome da Empresa</label><input id="contact-company" placeholder="Ex: BWA Global"/></div>
-        <div class="form-group full"><label>Segmento Empresa</label><select id="contact-segment" style="font-family:var(--font);font-size:14px;padding:9px 12px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg-card);color:var(--text);outline:none;width:100%"><option value="">Selecione...</option></select><button onclick="openManageOpts('segmentos_contato')" style="background:none;border:1px solid var(--border-md);color:var(--text-2);font-size:11px;font-weight:600;font-family:var(--font);padding:4px 10px;border-radius:var(--radius);cursor:pointer;margin-top:4px;display:flex;align-items:center;gap:4px"><i class="ti ti-settings" style="font-size:12px"></i> Gerenciar opções</button></div>
+        <div class="form-group"><label>Cargo da Pessoa</label><input id="contact-role" placeholder="Ex: Sócio-fundador"/></div>
         <div class="form-group"><label>E-mail da Pessoa</label><input id="contact-email" type="email" placeholder="joao@empresa.com"/></div>
         <div class="form-group"><label>Telefone da Pessoa</label><input id="contact-phone" placeholder="(11) 99999-9999"/></div>
+        <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border)">Dados da Empresa</div>
+        <div class="form-group"><label>Nome da Empresa</label><input id="contact-company" placeholder="Ex: BWA Global"/></div>
+        <div class="form-group"><label>Segmento Empresa</label>
+          <div class="dropdown-manage">
+            <select id="contact-segment" style="font-family:var(--font);font-size:14px;padding:9px 12px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg-card);color:var(--text);outline:none;width:100%;flex:1"><option value="">Selecione...</option></select>
+            <button onclick="openManageOpts('segmentos_contato')" class="btn-manage" title="Gerenciar opções"><i class="ti ti-settings" style="font-size:13px"></i></button>
+          </div>
+        </div>
       </div>
       <div class="form-actions">
         <button class="btn-cancel" onclick="closeModal('modal-contact')">Cancelar</button>
@@ -1345,9 +1353,9 @@ function renderDetail(d){
       </div>
       <i class="ti ti-grip-horizontal contact-grip"></i>
       <div class="contact-name">${ct.name}</div>
+      ${ct.company?`<div style="font-size:13px;font-weight:600;color:var(--text-2);margin-top:2px">${ct.company}</div>`:''}
       ${ct.role?`<div class="contact-role">${ct.role}</div>`:''}
-      ${ct.company?`<div class="contact-role" style="color:var(--text-3)">${ct.company}</div>`:''}
-      ${ct.segment?`<div class="contact-role" style="color:var(--accent);font-size:11px;font-weight:600">${ct.segment}</div>`:''}
+      ${ct.segment?`<div class="contact-role" style="color:var(--text-3);font-size:11px">${ct.segment}</div>`:''}
       <div class="contact-info">
         ${ct.email?`<div class="contact-info-item"><i class="ti ti-mail" style="font-size:13px"></i><a href="mailto:${ct.email}" style="color:var(--text-2);text-decoration:none">${ct.email}</a></div>`:''}
         ${ct.phone?`<div class="contact-info-item"><i class="ti ti-phone" style="font-size:13px"></i>${ct.phone}</div>`:''}
