@@ -1322,7 +1322,7 @@ function renderDetail(d){
         ${a.comment?`<div style="font-size:12px;color:var(--text-2);margin-top:4px;background:var(--bg-card);border-radius:5px;padding:6px 8px;border:1px solid var(--accent);white-space:pre-wrap;cursor:pointer;position:relative" onclick="toggleActivityComment('${d.id}','${a.id}')" title="Clique para editar">${a.comment} <i class="ti ti-pencil" style="font-size:10px;color:var(--text-3);vertical-align:middle"></i></div>`:''}
       </div>
       <div style="display:flex;gap:2px">
-        <button onclick="toggleActivityComment(${JSON.stringify(d.id)},${JSON.stringify(a.id)})" style="background:none;border:none;cursor:pointer;color:${a.comment?'var(--accent)':'var(--text-3)'};font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="${a.comment?'Editar comentário':'Adicionar comentário'}"><i class="ti ti-message"></i></button>
+        <button onclick="toggleActivityComment('${d.id}','${a.id}')" style="background:none;border:none;cursor:pointer;color:${a.comment?'var(--accent)':'var(--text-3)'};font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="${a.comment?'Editar comentário':'Adicionar comentário'}"><i class="ti ti-message"></i></button>
         <button onclick="editActivity(${JSON.stringify(d.id)},${JSON.stringify(a.id)})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="Editar"><i class="ti ti-pencil"></i></button>
         <button onclick="deleteActivity(${JSON.stringify(d.id)},${JSON.stringify(a.id)})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="Excluir"><i class="ti ti-trash"></i></button>
       </div>
@@ -1741,12 +1741,12 @@ function toggleActivityComment(dealId, actId) {
     <button onclick="saveActivityComment('${dealId}','${actId}')" style="background:var(--accent);border:none;color:#fff;font-size:11px;font-weight:600;font-family:var(--font);padding:7px 12px;border-radius:var(--radius);cursor:pointer;white-space:nowrap">Salvar</button>
   </div>`;
   itemEl.appendChild(div);
-  document.getElementById('comment-inp-'+actId)?.focus();
+  setTimeout(() => document.getElementById('comment-inp-'+actId)?.focus(), 50);
 }
 
 async function saveActivityComment(dealId, actId) {
-  const d = deals.find(x=>x.id===dealId); if(!d)return;
-  const a = d.activities.find(x=>x.id===actId); if(!a)return;
+  const d = deals.find(x=>x.id==dealId); if(!d)return;
+  const a = d.activities.find(x=>x.id==actId); if(!a)return;
   const inp = document.getElementById('comment-inp-'+actId);
   if (!inp) return;
   a.comment = inp.value.trim();
