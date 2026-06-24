@@ -200,6 +200,8 @@
     .modal-overlay.open { display: flex; }
     .modal-overlay#modal-contact { z-index: 1100; }
     .modal { background: var(--bg-card); border-radius: var(--radius-xl); width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); border: 1px solid var(--border); }
+    .modal.fullscreen { max-width: 100%; max-height: 100vh; height: 100vh; border-radius: 0; margin: 0; }
+    .modal-overlay.fullscreen { padding: 0; align-items: stretch; }
     .modal-head { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--bg-card); z-index: 2; }
     .modal-title { font-size: 17px; font-weight: 700; color: var(--text); }
     .modal-close { background: var(--bg-surface); border: none; cursor: pointer; color: var(--text-2); font-size: 18px; width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: .12s; }
@@ -251,7 +253,11 @@
     .btn-danger:hover { background: #FEF2F2; }
 
     /* ── CONTACTS ── */
-    .contact-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; position: relative; }
+    .contact-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; position: relative; cursor: grab; transition: opacity .15s, box-shadow .15s; }
+    .contact-card:active { cursor: grabbing; }
+    .contact-card.dragging-contact { opacity: .4; }
+    .contact-card.drag-over-contact { border-top: 2px solid var(--accent); }
+    .contact-grip { color: var(--text-3); font-size: 12px; cursor: grab; position: absolute; top: 12px; right: 40px; }
     .contact-name { font-size: 14px; font-weight: 600; color: var(--text); }
     .contact-role { font-size: 12px; color: var(--text-2); margin-top: 2px; }
     .contact-info { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
@@ -579,11 +585,12 @@
     </div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="form-group full"><label>Nome *</label><input id="contact-name" placeholder="Ex: João Silva"/></div>
-        <div class="form-group full"><label>Cargo</label><input id="contact-role" placeholder="Ex: Sócio-fundador"/></div>
-        <div class="form-group full"><label>Empresa</label><input id="contact-company" placeholder="Ex: BWA Global"/></div>
-        <div class="form-group"><label>E-mail</label><input id="contact-email" type="email" placeholder="joao@empresa.com"/></div>
-        <div class="form-group"><label>Telefone</label><input id="contact-phone" placeholder="(11) 99999-9999"/></div>
+        <div class="form-group full"><label>Nome da Pessoa *</label><input id="contact-name" placeholder="Ex: João Silva"/></div>
+        <div class="form-group full"><label>Cargo da Pessoa</label><input id="contact-role" placeholder="Ex: Sócio-fundador"/></div>
+        <div class="form-group full"><label>Nome da Empresa</label><input id="contact-company" placeholder="Ex: BWA Global"/></div>
+        <div class="form-group full"><label>Segmento Empresa</label><select id="contact-segment" style="font-family:var(--font);font-size:14px;padding:9px 12px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg-card);color:var(--text);outline:none;width:100%"><option value="">Selecione...</option></select><button onclick="openManageOpts('segmentos_contato')" style="background:none;border:1px solid var(--border-md);color:var(--text-2);font-size:11px;font-weight:600;font-family:var(--font);padding:4px 10px;border-radius:var(--radius);cursor:pointer;margin-top:4px;display:flex;align-items:center;gap:4px"><i class="ti ti-settings" style="font-size:12px"></i> Gerenciar opções</button></div>
+        <div class="form-group"><label>E-mail da Pessoa</label><input id="contact-email" type="email" placeholder="joao@empresa.com"/></div>
+        <div class="form-group"><label>Telefone da Pessoa</label><input id="contact-phone" placeholder="(11) 99999-9999"/></div>
       </div>
       <div class="form-actions">
         <button class="btn-cancel" onclick="closeModal('modal-contact')">Cancelar</button>
@@ -661,8 +668,8 @@
 </div>
 
 <!-- MODAL DETALHE -->
-<div class="modal-overlay" id="modal-detail">
-  <div class="modal">
+<div class="modal-overlay fullscreen" id="modal-detail">
+  <div class="modal fullscreen">
     <div class="modal-head">
       <span class="modal-title" id="detail-modal-title">Detalhes</span>
       <button class="modal-close" onclick="closeModal('modal-detail')"><i class="ti ti-x"></i></button>
@@ -749,7 +756,8 @@ const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','P
 const DEFAULTS = {
   segmentos: ['Agro','Corporate','Geral','Novo','Terceiro Setor'],
   origens: ['Associado','Evento','Inbound','Indicação','Outbound'],
-  origens_detalhadas: []
+  origens_detalhadas: [],
+  segmentos_contato: ['Advisor','Escritório de Contabilidade']
 };
 // (optsCache and funisCache declared above)
 
@@ -1060,7 +1068,7 @@ function populateSelectFromOpts(selectId,key,selected){
     el.value=selected||'';
   }
 }
-function openManageOpts(key){currentOptsKey=key;const labels={segmentos:'Segmentos',origens:'Origens',origens_detalhadas:'Origens Detalhadas'};document.getElementById('modal-opts-title').textContent='Gerenciar '+labels[key];renderOptsList();document.getElementById('modal-opts').classList.add('open');}
+function openManageOpts(key){currentOptsKey=key;const labels={segmentos:'Segmentos',origens:'Origens',origens_detalhadas:'Origens Detalhadas',segmentos_contato:'Segmentos de Empresa (Contatos)'};document.getElementById('modal-opts-title').textContent='Gerenciar '+labels[key];renderOptsList();document.getElementById('modal-opts').classList.add('open');}
 function renderOptsList(){
   const opts=getOpts(currentOptsKey);
   document.getElementById('opts-list').innerHTML=opts.length?opts.map((o,i)=>`
@@ -1330,14 +1338,16 @@ function renderDetail(d){
   }).join('') || '<p style="font-size:13px;color:var(--text-3)">Nenhuma atividade pendente.</p>';
 
   const contactsHtml = contacts.length ? contacts.map((ct,i)=>`
-    <div class="contact-card">
+    <div class="contact-card" draggable="true" data-contact-idx="${i}">
       <div class="contact-actions">
         <button class="btn-icon-sm" onclick="openEditContact(${JSON.stringify(d.id)},${i})" title="Editar"><i class="ti ti-pencil"></i></button>
         <button class="btn-icon-sm" onclick="deleteContact(${JSON.stringify(d.id)},${i})" title="Excluir"><i class="ti ti-trash"></i></button>
       </div>
+      <i class="ti ti-grip-horizontal contact-grip"></i>
       <div class="contact-name">${ct.name}</div>
       ${ct.role?`<div class="contact-role">${ct.role}</div>`:''}
       ${ct.company?`<div class="contact-role" style="color:var(--text-3)">${ct.company}</div>`:''}
+      ${ct.segment?`<div class="contact-role" style="color:var(--accent);font-size:11px;font-weight:600">${ct.segment}</div>`:''}
       <div class="contact-info">
         ${ct.email?`<div class="contact-info-item"><i class="ti ti-mail" style="font-size:13px"></i><a href="mailto:${ct.email}" style="color:var(--text-2);text-decoration:none">${ct.email}</a></div>`:''}
         ${ct.phone?`<div class="contact-info-item"><i class="ti ti-phone" style="font-size:13px"></i>${ct.phone}</div>`:''}
@@ -1345,6 +1355,7 @@ function renderDetail(d){
     </div>`).join('') : '<p style="font-size:13px;color:var(--text-3);margin-bottom:8px">Nenhum contato cadastrado.</p>';
 
   const _currentUserName = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
+  const _dealId = d.id;
   document.getElementById('detail-modal-body').innerHTML=`
     <div style="margin-bottom:16px">
       <div class="detail-company" onclick="inlineEditText(${JSON.stringify(d.id)},'company',this)" title="Clique para editar" style="cursor:pointer">${d.company}</div>
@@ -1416,6 +1427,8 @@ function renderDetail(d){
     <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
       <button class="btn-danger" onclick="confirmDeleteDeal(${JSON.stringify(d.id)})"><i class="ti ti-trash"></i> Excluir oportunidade</button>
     </div>`;
+  // Init contact drag and drop after DOM is ready
+  setTimeout(() => initContactDragDrop(d.id), 50);
 }
 async function changeStage(id,stage){const d=deals.find(x=>x.id===id);if(!d)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Etapa alterada para "'+stage+'"'});d.stage=stage;const ok=await saveDeal(d);if(!ok)return;toast('Etapa atualizada');renderDetail(d);render();}
 async function addHistory(dealId){
@@ -1657,6 +1670,28 @@ async function renameOptInDeals(key, oldVal, newVal) {
   if (toUpdate.length > 0) toast(`${toUpdate.length} deal(s) atualizados automaticamente.`);
 }
 
+// ── CONTACT DRAG AND DROP ──
+function initContactDragDrop(dealId) {
+  const cards = document.querySelectorAll('.contact-card[data-contact-idx]');
+  if (!cards.length) return;
+  let dragIdx = null;
+  cards.forEach(el => {
+    el.addEventListener('dragstart', e => { dragIdx = parseInt(el.dataset.contactIdx); el.classList.add('dragging-contact'); e.dataTransfer.effectAllowed='move'; });
+    el.addEventListener('dragend', () => { el.classList.remove('dragging-contact'); cards.forEach(c=>c.classList.remove('drag-over-contact')); });
+    el.addEventListener('dragover', e => { e.preventDefault(); cards.forEach(c=>c.classList.remove('drag-over-contact')); el.classList.add('drag-over-contact'); });
+    el.addEventListener('drop', async e => {
+      e.preventDefault();
+      const toIdx = parseInt(el.dataset.contactIdx);
+      if (dragIdx === null || dragIdx === toIdx) return;
+      const d = deals.find(x=>x.id==dealId); if(!d||!d.contacts) return;
+      const [moved] = d.contacts.splice(dragIdx, 1);
+      d.contacts.splice(toIdx, 0, moved);
+      await saveDeal(d);
+      renderDetail(d);
+    });
+  });
+}
+
 // ── CONTACTS ──
 let editingContactIdx = null;
 let contactDealId = null;
@@ -1666,6 +1701,7 @@ function openAddContact(dealId) {
   editingContactIdx = null;
   document.getElementById('modal-contact-title').textContent = 'Adicionar contato';
   ['contact-name','contact-role','contact-company','contact-email','contact-phone'].forEach(id => document.getElementById(id).value = '');
+  populateContactSegmentSelect('');
   document.getElementById('modal-contact').classList.add('open');
 }
 
@@ -1680,6 +1716,7 @@ function openEditContact(dealId, idx) {
   document.getElementById('contact-email').value = ct.email||'';
   document.getElementById('contact-company').value = ct.company||'';
   document.getElementById('contact-phone').value = ct.phone||'';
+  populateContactSegmentSelect(ct.segment||'');
   document.getElementById('modal-contact').classList.add('open');
 }
 
@@ -1692,6 +1729,7 @@ async function saveContact() {
     name,
     role: document.getElementById('contact-role').value.trim(),
     company: document.getElementById('contact-company').value.trim(),
+    segment: document.getElementById('contact-segment')?.value||'',
     email: document.getElementById('contact-email').value.trim(),
     phone: document.getElementById('contact-phone').value.trim(),
   };
@@ -2007,6 +2045,16 @@ async function migrateDoneActivities() {
     if (changed) await saveDeal(d);
     changed = false;
   }
+}
+
+
+// ── CONTACT SEGMENT SELECT ──
+function populateContactSegmentSelect(selected) {
+  const el = document.getElementById('contact-segment');
+  if (!el) return;
+  const opts = getOpts('segmentos_contato');
+  el.innerHTML = '<option value="">Selecione...</option>' +
+    opts.map(o => `<option value="${o}" ${o===selected?'selected':''}>${o}</option>`).join('');
 }
 
 // ── INLINE EDIT ──
