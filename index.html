@@ -1319,7 +1319,7 @@ function renderDetail(d){
       <div style="flex:1">
         <div class="act-title-txt ${a.done?'done':''}">${a.title}</div>
         <div class="act-meta"><span ${od?'class="overdue"':''}>${fmtDate(a.date)}</span>${od?' · <span class="overdue">VENCIDA</span>':''}${a.owner?` · <span style="color:var(--text-3)">${a.owner}</span>`:''}</div>
-        ${a.comment?`<div style="font-size:12px;color:var(--text-2);margin-top:4px;background:var(--bg-card);border-radius:5px;padding:6px 8px;border:1px solid var(--border);white-space:pre-wrap;cursor:pointer" onclick="toggleActivityComment('${d.id}','${a.id}')" title="Clique para editar o comentário">${a.comment}<span style="float:right;font-size:10px;color:var(--text-3);margin-left:6px"><i class="ti ti-pencil"></i></span></div>`:''}
+        ${a.comment?`<div style="font-size:12px;color:var(--text-2);margin-top:4px;background:var(--bg-card);border-radius:5px;padding:6px 8px;border:1px solid var(--accent);white-space:pre-wrap;cursor:pointer;position:relative" onclick="toggleActivityComment('${d.id}','${a.id}')" title="Clique para editar">${a.comment} <i class="ti ti-pencil" style="font-size:10px;color:var(--text-3);vertical-align:middle"></i></div>`:''}
       </div>
       <div style="display:flex;gap:2px">
         <button onclick="toggleActivityComment(${JSON.stringify(d.id)},${JSON.stringify(a.id)})" style="background:none;border:none;cursor:pointer;color:${a.comment?'var(--accent)':'var(--text-3)'};font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="${a.comment?'Editar comentário':'Adicionar comentário'}"><i class="ti ti-message"></i></button>
