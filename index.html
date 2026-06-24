@@ -1726,11 +1726,11 @@ async function togglePinHistory(dealId, origIdx) {
 
 // ── ACTIVITY COMMENT ──
 function toggleActivityComment(dealId, actId) {
-  const d = deals.find(x=>x.id===dealId); if(!d)return;
-  const a = d.activities.find(x=>x.id===actId); if(!a)return;
-  const itemEl = document.querySelector('[data-act-id="'+actId+'"');
+  const d = deals.find(x=>x.id==dealId); if(!d)return;
+  const a = d.activities.find(x=>x.id==actId); if(!a)return;
+  const itemEl = document.querySelector('[data-act-id="'+actId+'"]');
   if (!itemEl) return;
-  // Show comment input inline
+  // If textarea already open, close it
   const commentDiv = itemEl.querySelector('.act-comment-input');
   if (commentDiv) { commentDiv.remove(); return; }
   const div = document.createElement('div');
@@ -1738,9 +1738,9 @@ function toggleActivityComment(dealId, actId) {
   div.style.cssText = 'margin-top:8px;width:100%';
   div.innerHTML = `<div style="display:flex;gap:6px;align-items:flex-end">
     <textarea id="comment-inp-${actId}" placeholder="Adicione um comentário..." style="flex:1;min-height:52px;font-size:12px;padding:6px 9px;resize:vertical;font-family:var(--font)">${a.comment||''}</textarea>
-    <button onclick="saveActivityComment(${JSON.stringify(dealId)},${JSON.stringify(actId)})" style="background:var(--brand);border:none;color:#fff;font-size:11px;font-weight:600;font-family:var(--font);padding:7px 12px;border-radius:var(--radius);cursor:pointer;white-space:nowrap">Salvar</button>
+    <button onclick="saveActivityComment('${dealId}','${actId}')" style="background:var(--accent);border:none;color:#fff;font-size:11px;font-weight:600;font-family:var(--font);padding:7px 12px;border-radius:var(--radius);cursor:pointer;white-space:nowrap">Salvar</button>
   </div>`;
-  itemEl.querySelector('[style*="flex:1"]').appendChild(div);
+  itemEl.appendChild(div);
   document.getElementById('comment-inp-'+actId)?.focus();
 }
 
