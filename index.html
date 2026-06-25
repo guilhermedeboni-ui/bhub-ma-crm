@@ -1381,17 +1381,12 @@ function renderDetail(d){
             <i class="ti ti-user" style="font-size:11px;color:var(--text-3)"></i>
             <span class="info-val" style="font-size:12px;color:var(--text-2)">${d.owner||'<span style="color:var(--text-3)">— responsável</span>'}</span>
           </div>
-          <span style="color:var(--border-md);font-size:12px">·</span>
-          <select style="font-size:12px;font-weight:600;border:none;background:none;color:var(--accent);font-family:var(--font);cursor:pointer;padding:0" onchange="changeStage(${JSON.stringify(d.id)},this.value)">
-            ${STAGES.map(s=>`<option value="${s}" ${s===d.stage?'selected':''}>${s}</option>`).join('')}
-          </select>
-          <span style="color:var(--border-md);font-size:12px">·</span>
-          <div onclick="inlineEditMrr(${JSON.stringify(d.id)},this)" title="Clique para editar MRR" style="cursor:pointer">
-            <span style="font-size:12px;font-weight:700;color:var(--text-2)">${d.mrr?fmtMrr(d.mrr)+' MRR':'<span style="color:var(--text-3);font-weight:400">+ MRR</span>'}</span>
-          </div>
         </div>
       </div>
-      <button class="btn-danger btn-sm" onclick="confirmDeleteDeal(${JSON.stringify(d.id)})" style="font-size:12px;padding:4px 10px;flex-shrink:0"><i class="ti ti-trash" style="font-size:12px"></i></button>
+      <div onclick="inlineEditMrr(${JSON.stringify(d.id)},this)" title="Clique para editar MRR" style="cursor:pointer;text-align:right;flex-shrink:0">
+        <div style="font-size:11px;color:var(--text-3);font-weight:500;text-transform:uppercase;letter-spacing:.5px">MRR</div>
+        <div class="detail-mrr" style="font-size:22px;font-weight:800;line-height:1.1">${d.mrr?fmtMrr(d.mrr):'<span style="color:var(--text-3);font-size:14px;font-weight:400">+ Adicionar</span>'}</div>
+      </div>
     </div>
     <!-- BODY LAYOUT -->
     <div class="deal-layout">
@@ -1423,6 +1418,12 @@ function renderDetail(d){
           <div class="sidebar-field" onclick="inlineEditCity(${JSON.stringify(d.id)},this)">
             <span class="sidebar-field-key">Município</span>
             <span class="sidebar-field-val info-val">${d.city||'<span style="color:var(--text-3)">—</span>'}</span>
+          </div>
+          <div class="sidebar-field" style="cursor:default">
+            <span class="sidebar-field-key">Etapa do funil</span>
+            <select style="font-size:11px;font-weight:600;border:none;background:none;color:var(--accent);font-family:var(--font);cursor:pointer;text-align:right;max-width:140px" onchange="changeStage(${JSON.stringify(d.id)},this.value)">
+              ${STAGES.map(s=>`<option value="${s}" ${s===d.stage?'selected':''}>${s}</option>`).join('')}
+            </select>
           </div>
 
         </div>
@@ -1462,6 +1463,10 @@ function renderDetail(d){
           <div>
             <div class="section-title" style="margin-bottom:10px"><i class="ti ti-history" style="font-size:14px"></i>Histórico de interações</div>
             <div>${histHtml}</div>
+          </div>
+          <!-- Excluir -->
+          <div style="padding-top:8px;border-top:1px solid var(--border)">
+            <button class="btn-danger" onclick="confirmDeleteDeal(${JSON.stringify(d.id)})"><i class="ti ti-trash"></i> Excluir oportunidade</button>
           </div>
         </div>
       </div>
