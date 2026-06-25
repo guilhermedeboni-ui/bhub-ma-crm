@@ -594,6 +594,7 @@
         <div class="form-group full"><label>LinkedIn da Pessoa</label><input id="contact-linkedin" placeholder="linkedin.com/in/joaosilva"/></div>
         <div class="form-group full" style="margin-top:4px"><div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;padding-bottom:4px;border-bottom:1px solid var(--border)">Dados da Empresa</div></div>
         <div class="form-group"><label>Nome da Empresa</label><input id="contact-company" placeholder="Ex: BWA Global"/></div>
+        <div class="form-group"><label>Site da Empresa</label><input id="contact-website" placeholder="Ex: www.empresa.com.br"/></div>
         <div class="form-group"><label>Segmento Empresa</label>
           <div class="dropdown-manage">
             <select id="contact-segment" style="font-family:var(--font);font-size:14px;padding:9px 12px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg-card);color:var(--text);outline:none;width:100%;flex:1"><option value="">Selecione...</option></select>
@@ -1361,6 +1362,7 @@ function renderDetail(d){
         ${ct.email?`<div class="contact-info-item"><i class="ti ti-mail" style="font-size:13px"></i><a href="mailto:${ct.email}" style="color:var(--text-2);text-decoration:none">${ct.email}</a></div>`:''}
         ${ct.phone?`<div class="contact-info-item"><i class="ti ti-phone" style="font-size:13px"></i>${ct.phone}</div>`:''}
         ${ct.linkedin?`<div class="contact-info-item"><i class="ti ti-brand-linkedin" style="font-size:13px"></i><a href="${ct.linkedin.startsWith('http')?ct.linkedin:'https://'+ct.linkedin}" target="_blank" style="color:var(--text-2);text-decoration:none">${ct.linkedin}</a></div>`:''}
+        ${ct.website?`<div class="contact-info-item"><i class="ti ti-world" style="font-size:13px"></i><a href="${ct.website.startsWith('http')?ct.website:'https://'+ct.website}" target="_blank" style="color:var(--text-2);text-decoration:none">${ct.website}</a></div>`:''}
       </div>
     </div>`).join('') : '<p style="font-size:13px;color:var(--text-3);margin-bottom:8px">Nenhum contato cadastrado.</p>';
 
@@ -1710,7 +1712,7 @@ function openAddContact(dealId) {
   contactDealId = dealId;
   editingContactIdx = null;
   document.getElementById('modal-contact-title').textContent = 'Adicionar contato';
-  ['contact-name','contact-role','contact-company','contact-email','contact-phone','contact-linkedin'].forEach(id => document.getElementById(id).value = '');
+  ['contact-name','contact-role','contact-company','contact-email','contact-phone','contact-linkedin','contact-website'].forEach(id => document.getElementById(id).value = '');
   populateContactSegmentSelect('');
   document.getElementById('modal-contact').classList.add('open');
 }
@@ -1727,6 +1729,7 @@ function openEditContact(dealId, idx) {
   document.getElementById('contact-company').value = ct.company||'';
   document.getElementById('contact-phone').value = ct.phone||'';
   document.getElementById('contact-linkedin').value = ct.linkedin||'';
+  document.getElementById('contact-website').value = ct.website||'';
   populateContactSegmentSelect(ct.segment||'');
   document.getElementById('modal-contact').classList.add('open');
 }
@@ -1743,6 +1746,7 @@ async function saveContact() {
     segment: document.getElementById('contact-segment')?.value||'',
     email: document.getElementById('contact-email').value.trim(),
     linkedin: document.getElementById('contact-linkedin').value.trim(),
+    website: document.getElementById('contact-website').value.trim(),
     phone: document.getElementById('contact-phone').value.trim(),
   };
   if (editingContactIdx !== null) {
