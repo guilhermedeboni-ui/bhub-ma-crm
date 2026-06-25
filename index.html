@@ -212,8 +212,8 @@
     .sidebar-field { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
     .sidebar-field:last-child { border-bottom: none; }
     .sidebar-field:hover { background: var(--bg-hover); margin: 0 -6px; padding: 5px 6px; border-radius: var(--radius); }
-    .sidebar-field-key { font-size: 11px; color: var(--text-3); white-space: nowrap; }
-    .sidebar-field-val { font-size: 12px; font-weight: 600; color: var(--text); text-align: right; }
+    .sidebar-field-key { font-size: 11px; color: var(--text-3); white-space: nowrap; flex-shrink: 0; }
+    .sidebar-field-val { font-size: 12px; font-weight: 600; color: var(--text); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
     .modal-head { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--bg-card); z-index: 2; }
     .modal-title { font-size: 17px; font-weight: 700; color: var(--text); }
     .modal-close { background: var(--bg-surface); border: none; cursor: pointer; color: var(--text-2); font-size: 18px; width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: .12s; }
@@ -1372,27 +1372,26 @@ function renderDetail(d){
   const _dealId = d.id;
   document.getElementById('detail-modal-body').innerHTML=`
     <!-- TOP BAR -->
-    <div class="modal-head" style="flex-shrink:0">
-      <div style="display:flex;align-items:center;gap:12px;min-width:0">
-        <button class="modal-close" onclick="closeModal('modal-detail')" style="flex-shrink:0"><i class="ti ti-arrow-left"></i></button>
-        <div style="min-width:0">
-          <div class="detail-company" onclick="inlineEditText(${JSON.stringify(d.id)},'company',this)" title="Clique para editar" style="cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.company}</div>
-
+    <div style="flex-shrink:0;background:var(--bg-card);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;gap:16px">
+      <button class="modal-close" onclick="closeModal('modal-detail')" style="flex-shrink:0"><i class="ti ti-arrow-left"></i></button>
+      <div style="flex:1;min-width:0">
+        <div class="detail-company" onclick="inlineEditText(${JSON.stringify(d.id)},'company',this)" title="Clique para editar" style="cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:18px;margin-bottom:0">${d.company}</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px;flex-wrap:wrap">
+          <div onclick="inlineEditOwner(${JSON.stringify(d.id)},this)" title="Clique para editar" style="cursor:pointer;display:flex;align-items:center;gap:4px">
+            <i class="ti ti-user" style="font-size:11px;color:var(--text-3)"></i>
+            <span class="info-val" style="font-size:12px;color:var(--text-2)">${d.owner||'<span style="color:var(--text-3)">— responsável</span>'}</span>
+          </div>
+          <span style="color:var(--border-md);font-size:12px">·</span>
+          <select style="font-size:12px;font-weight:600;border:none;background:none;color:var(--accent);font-family:var(--font);cursor:pointer;padding:0" onchange="changeStage(${JSON.stringify(d.id)},this.value)">
+            ${STAGES.map(s=>`<option value="${s}" ${s===d.stage?'selected':''}>${s}</option>`).join('')}
+          </select>
+          <span style="color:var(--border-md);font-size:12px">·</span>
+          <div onclick="inlineEditMrr(${JSON.stringify(d.id)},this)" title="Clique para editar MRR" style="cursor:pointer">
+            <span style="font-size:12px;font-weight:700;color:var(--text-2)">${d.mrr?fmtMrr(d.mrr)+' MRR':'<span style="color:var(--text-3);font-weight:400">+ MRR</span>'}</span>
+          </div>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
-        <div onclick="inlineEditOwner(${JSON.stringify(d.id)},this)" title="Clique para editar responsável" style="cursor:pointer;display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-surface)">
-          <i class="ti ti-user" style="font-size:12px;color:var(--text-3)"></i>
-          <span class="info-val" style="font-size:12px;font-weight:600;color:var(--text)">${d.owner||'<span style="color:var(--text-3)">Responsável</span>'}</span>
-        </div>
-        <select style="font-size:12px;font-weight:600;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-surface);color:var(--text);font-family:var(--font);padding:4px 8px;cursor:pointer" onchange="changeStage(${JSON.stringify(d.id)},this.value)">
-          ${STAGES.map(s=>`<option value="${s}" ${s===d.stage?'selected':''}>${s}</option>`).join('')}
-        </select>
-        <div onclick="inlineEditMrr(${JSON.stringify(d.id)},this)" title="Clique para editar MRR" style="cursor:pointer;padding:4px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-surface)">
-          <span style="font-size:12px;font-weight:700;color:var(--accent)">${d.mrr?fmtMrr(d.mrr)+' MRR':'<span style="color:var(--text-3);font-weight:400">+ MRR</span>'}</span>
-        </div>
-        <button class="btn-danger btn-sm" onclick="confirmDeleteDeal(${JSON.stringify(d.id)})" style="font-size:12px;padding:4px 10px"><i class="ti ti-trash" style="font-size:12px"></i></button>
-      </div>
+      <button class="btn-danger btn-sm" onclick="confirmDeleteDeal(${JSON.stringify(d.id)})" style="font-size:12px;padding:4px 10px;flex-shrink:0"><i class="ti ti-trash" style="font-size:12px"></i></button>
     </div>
     <!-- BODY LAYOUT -->
     <div class="deal-layout">
