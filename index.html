@@ -1299,7 +1299,7 @@ function renderAllActivities(){
 }
 
 // ── DEAL DETAIL ──
-function openDeal(id){currentDealId=id;const d=deals.find(x=>x.id===id);if(!d)return;document.getElementById('detail-modal-title').textContent=d.company;renderDetail(d);document.getElementById('modal-detail').classList.add('open');}
+function openDeal(id){currentDealId=id;const d=deals.find(x=>x.id===id);if(!d)return;renderDetail(d);document.getElementById('modal-detail').classList.add('open');}
 
 function renderDetail(d){
   const c=STAGE_COLORS[d.stage];
