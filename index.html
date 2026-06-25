@@ -1207,7 +1207,7 @@ function renderKanban(){
             const dotColor=od?'dot-red':isToday?'dot-green':'dot-gray';
             const txtStyle=od?'color:#EF4444;font-weight:600':isToday?'color:#22C55E;font-weight:600':'';
             return `<div class="deal-activity"><span class="activity-dot ${dotColor}"></span><span style="${txtStyle}">${next.title}</span></div>`;
-          })():`<div class="deal-activity"><span class="activity-dot dot-gray"></span><span>Sem atividades</span></div>`}
+          })():`<div class="deal-activity"><span class="activity-dot" style="background:#F59E0B"></span><span style="color:#F59E0B;font-size:11px">Sem atividades</span></div>`}
         </div>`;
       card.addEventListener('dragstart',e=>{draggedDealId=d.id;card.classList.add('dragging');document.getElementById('delete-zone').classList.add('visible');e.dataTransfer.effectAllowed='move';});
       card.addEventListener('dragend',()=>{draggedDealId=null;card.classList.remove('dragging');document.getElementById('delete-zone').classList.remove('visible','active');});
