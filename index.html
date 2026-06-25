@@ -1374,59 +1374,44 @@ function renderDetail(d){
     <!-- TOP BAR -->
     <div style="flex-shrink:0;background:var(--bg-surface);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;gap:16px">
       <button class="modal-close" onclick="closeModal('modal-detail')" style="flex-shrink:0"><i class="ti ti-arrow-left"></i></button>
-      <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:24px;min-width:0">
-        <div style="min-width:0">
-          <div class="detail-company" onclick="inlineEditText(${JSON.stringify(d.id)},'company',this)" title="Clique para editar" style="cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:18px;margin-bottom:0">${d.company}</div>
-          <div onclick="inlineEditOwner(${JSON.stringify(d.id)},this)" title="Clique para editar" style="cursor:pointer;display:flex;align-items:center;gap:4px;margin-top:2px">
-            <i class="ti ti-user" style="font-size:11px;color:var(--text-3)"></i>
-            <span class="info-val" style="font-size:12px;color:var(--text-2)">${d.owner||'<span style="color:var(--text-3)">— responsável</span>'}</span>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div class="detail-company" onclick="inlineEditText(${JSON.stringify(d.id)},'company',this)" title="Clique para editar" style="cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:18px;margin-bottom:0;flex-shrink:0">${d.company}</div>
+          <div onclick="inlineEditMrr(${JSON.stringify(d.id)},this)" title="Clique para editar MRR" style="cursor:pointer;flex-shrink:0">
+            <div class="detail-mrr" style="font-size:20px;font-weight:800;line-height:1">${d.mrr?fmtMrr(d.mrr)+' MRR':'<span style="color:var(--text-3);font-size:13px;font-weight:400">+ MRR</span>'}</div>
           </div>
         </div>
-        <div onclick="inlineEditMrr(${JSON.stringify(d.id)},this)" title="Clique para editar MRR" style="cursor:pointer;text-align:center;flex-shrink:0">
-          <div style="font-size:11px;color:var(--text-3);font-weight:500;text-transform:uppercase;letter-spacing:.5px">MRR</div>
-          <div class="detail-mrr" style="font-size:22px;font-weight:800;line-height:1.1">${d.mrr?fmtMrr(d.mrr):'<span style="color:var(--text-3);font-size:14px;font-weight:400">+ Adicionar</span>'}</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:6px;flex-wrap:wrap">
+          <div onclick="inlineEditOwner(${JSON.stringify(d.id)},this)" title="Clique para editar" style="cursor:pointer;display:flex;align-items:center;gap:4px">
+            <i class="ti ti-user" style="font-size:11px;color:var(--text-3)"></i>
+            <span class="info-val" style="font-size:12px;color:var(--text-2)">${d.owner||'<span style="color:var(--text-3)">—</span>'}</span>
+          </div>
+          <span style="color:var(--border-md)">·</span>
+          <div onclick="inlineEditSelect(${JSON.stringify(d.id)},'segment',getOpts('segmentos'),this)" title="Clique para editar" style="cursor:pointer;display:flex;align-items:center;gap:4px">
+            <i class="ti ti-tag" style="font-size:11px;color:var(--text-3)"></i>
+            <span class="info-val" style="font-size:12px;color:var(--text-2)">${d.segment||'<span style="color:var(--text-3)">—</span>'}</span>
+          </div>
+          <span style="color:var(--border-md)">·</span>
+          <div onclick="inlineEditSelect(${JSON.stringify(d.id)},'origem',getOpts('origens'),this)" title="Clique para editar" style="cursor:pointer;display:flex;align-items:center;gap:4px">
+            <i class="ti ti-source-code" style="font-size:11px;color:var(--text-3)"></i>
+            <span class="info-val" style="font-size:12px;color:var(--text-2)">${d.origem||'<span style="color:var(--text-3)">—</span>'}</span>
+          </div>
+          <span style="color:var(--border-md)">·</span>
+          <div onclick="inlineEditState(${JSON.stringify(d.id)},this)" title="Clique para editar" style="cursor:pointer;display:flex;align-items:center;gap:4px">
+            <i class="ti ti-map-pin" style="font-size:11px;color:var(--text-3)"></i>
+            <span class="info-val" style="font-size:12px;color:var(--text-2)">${[d.state,d.city].filter(Boolean).join(' · ')||'<span style="color:var(--text-3)">—</span>'}</span>
+          </div>
+          <span style="color:var(--border-md)">·</span>
+          <select style="font-size:12px;font-weight:600;border:none;background:none;color:var(--text);font-family:var(--font);cursor:pointer;padding:0" onchange="changeStage(${JSON.stringify(d.id)},this.value)">
+            ${STAGES.map(s=>`<option value="${s}" ${s===d.stage?'selected':''}>${s}</option>`).join('')}
+          </select>
         </div>
       </div>
     </div>
     <!-- BODY LAYOUT -->
     <div class="deal-layout">
-      <!-- SIDEBAR -->
+      <!-- SIDEBAR: only contacts -->
       <div class="deal-sidebar">
-        <div>
-          <div class="sidebar-section-title">Informações</div>
-
-          <div class="sidebar-field" onclick="inlineEditSelect(${JSON.stringify(d.id)},'segment',getOpts('segmentos'),this)">
-            <span class="sidebar-field-key">Segmento</span>
-            <span class="sidebar-field-val info-val">${d.segment||'<span style="color:var(--text-3)">—</span>'}</span>
-          </div>
-          <div class="sidebar-field" onclick="inlineEditText(${JSON.stringify(d.id)},'subsegment',this)">
-            <span class="sidebar-field-key">Sub-segmento</span>
-            <span class="sidebar-field-val info-val">${d.subsegment||'<span style="color:var(--text-3)">—</span>'}</span>
-          </div>
-          <div class="sidebar-field" onclick="inlineEditSelect(${JSON.stringify(d.id)},'origem',getOpts('origens'),this)">
-            <span class="sidebar-field-key">Origem</span>
-            <span class="sidebar-field-val info-val">${d.origem||'<span style="color:var(--text-3)">—</span>'}</span>
-          </div>
-          <div class="sidebar-field" onclick="inlineEditSelect(${JSON.stringify(d.id)},'origem_detail',getOpts('origens_detalhadas'),this)">
-            <span class="sidebar-field-key">Origem detalhada</span>
-            <span class="sidebar-field-val info-val">${d.origem_detail||'<span style="color:var(--text-3)">—</span>'}</span>
-          </div>
-          <div class="sidebar-field" onclick="inlineEditState(${JSON.stringify(d.id)},this)">
-            <span class="sidebar-field-key">Estado</span>
-            <span class="sidebar-field-val info-val">${d.state||'<span style="color:var(--text-3)">—</span>'}</span>
-          </div>
-          <div class="sidebar-field" onclick="inlineEditCity(${JSON.stringify(d.id)},this)">
-            <span class="sidebar-field-key">Município</span>
-            <span class="sidebar-field-val info-val">${d.city||'<span style="color:var(--text-3)">—</span>'}</span>
-          </div>
-          <div class="sidebar-field" style="cursor:default">
-            <span class="sidebar-field-key">Etapa do funil</span>
-            <select style="font-size:12px;font-weight:600;border:none;background:none;color:var(--text);font-family:var(--font);cursor:pointer;text-align:right;max-width:140px" onchange="changeStage(${JSON.stringify(d.id)},this.value)">
-              ${STAGES.map(s=>`<option value="${s}" ${s===d.stage?'selected':''}>${s}</option>`).join('')}
-            </select>
-          </div>
-
-        </div>
         <div>
           <div class="sidebar-section-title" style="display:flex;align-items:center;justify-content:space-between">
             Pontos Focais
