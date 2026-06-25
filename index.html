@@ -213,7 +213,7 @@
     .sidebar-field:last-child { border-bottom: none; }
     .sidebar-field:hover { background: var(--bg-hover); margin: 0 -6px; padding: 5px 6px; border-radius: var(--radius); }
     .sidebar-field-key { font-size: 11px; color: var(--text-3); white-space: nowrap; flex-shrink: 0; }
-    .sidebar-field-val { font-size: 12px; font-weight: 600; color: var(--text); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+    .sidebar-field-val { font-size: 12px; font-weight: 600; color: var(--text); text-align: right; word-break: break-word; }
     .modal-head { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--bg-card); z-index: 2; }
     .modal-title { font-size: 17px; font-weight: 700; color: var(--text); }
     .modal-close { background: var(--bg-surface); border: none; cursor: pointer; color: var(--text-2); font-size: 18px; width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: .12s; }
@@ -1372,7 +1372,7 @@ function renderDetail(d){
   const _dealId = d.id;
   document.getElementById('detail-modal-body').innerHTML=`
     <!-- TOP BAR -->
-    <div style="flex-shrink:0;background:var(--bg-card);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;gap:16px">
+    <div style="flex-shrink:0;background:var(--bg-surface);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:center;gap:20px">
       <button class="modal-close" onclick="closeModal('modal-detail')" style="flex-shrink:0"><i class="ti ti-arrow-left"></i></button>
       <div style="flex:1;min-width:0">
         <div class="detail-company" onclick="inlineEditText(${JSON.stringify(d.id)},'company',this)" title="Clique para editar" style="cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:18px;margin-bottom:0">${d.company}</div>
@@ -1421,7 +1421,7 @@ function renderDetail(d){
           </div>
           <div class="sidebar-field" style="cursor:default">
             <span class="sidebar-field-key">Etapa do funil</span>
-            <select style="font-size:11px;font-weight:600;border:none;background:none;color:var(--accent);font-family:var(--font);cursor:pointer;text-align:right;max-width:140px" onchange="changeStage(${JSON.stringify(d.id)},this.value)">
+            <select style="font-size:12px;font-weight:600;border:none;background:none;color:var(--text);font-family:var(--font);cursor:pointer;text-align:right;max-width:140px" onchange="changeStage(${JSON.stringify(d.id)},this.value)">
               ${STAGES.map(s=>`<option value="${s}" ${s===d.stage?'selected':''}>${s}</option>`).join('')}
             </select>
           </div>
