@@ -807,7 +807,7 @@ async function loadOptsFromDB() {
   } catch(e) { console.error('loadOptsFromDB error', e); }
 }
 
-let deals=[], currentUser=null, editingDealId=null, crmUsers=[], currentOptsKey=null, draggedDealId=null;
+let deals=[], currentUser=null, editingDealId=null, crmUsers=[], currentOptsKey=null, draggedDealId=null, currentDealId=null;
 
 // ── SIDEBAR TOGGLE ──
 function toggleSidebar() {
@@ -1031,7 +1031,7 @@ async function loadCrmUsers(){
 }
 
 // ── UTILS ──
-function fmtMrr(v){if(!v)return'-';if(v>=1000000)return'R$'+(v/1000000).toFixed(1)+'M';if(v>=1000)return'R$'+(v/1000).toFixed(0)+'K';return'R$'+v;}
+function fmtMrr(v){if(!v)return'-';if(v>=1000000)return'R$'+(v/1000000).toFixed(1)+'M';if(v>=1000)return'R$'+(v/1000).toFixed(0)+'K';return'R$'+v.toLocaleString('pt-BR');}
 function isOverdue(ds){if(!ds)return false;return new Date(ds+'T23:59:59')<new Date();}
 function getNextAct(deal){return deal.activities.filter(a=>!a.done).sort((a,b)=>a.date.localeCompare(b.date))[0]||null;}
 function fmtDate(ds){if(!ds)return'';return new Date(ds+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});}
@@ -1060,10 +1060,20 @@ function renderACList(inputId, opts, val) {
   const list = document.getElementById('ac-'+inputId);
   if (!list) return;
   const filtered = val ? opts.filter(o => o.toLowerCase().includes(val.toLowerCase())) : opts;
+  list.innerHTML = '';
   if (!filtered.length) {
-    list.innerHTML = '<div class="autocomplete-item no-results">Nenhuma opção encontrada</div>';
+    const noRes = document.createElement('div');
+    noRes.className = 'autocomplete-item no-results';
+    noRes.textContent = 'Nenhuma opção encontrada';
+    list.appendChild(noRes);
   } else {
-    list.innerHTML = filtered.map(o => `<div class="autocomplete-item" onmousedown="selectAC('${inputId}','${o.replace(/'/g,"\'")}')">${o}</div>`).join('');
+    filtered.forEach(o => {
+      const item = document.createElement('div');
+      item.className = 'autocomplete-item';
+      item.textContent = o;
+      item.addEventListener('mousedown', () => selectAC(inputId, o));
+      list.appendChild(item);
+    });
   }
   list.classList.add('open');
 }
@@ -1147,7 +1157,15 @@ async function removeOpt(i){const opts=getOpts(currentOptsKey);opts.splice(i,1);
 function refreshFormDropdowns(){populateSelectFromOpts('nf-segment','segmentos');populateSelectFromOpts('nf-origem','origens');populateSelectFromOpts('nf-origem-detail','origens_detalhadas');const fs=document.getElementById('f-segment');const cur=fs.value;const opts=getOpts('segmentos');fs.innerHTML='<option value="">Todos</option>'+opts.map(o=>`<option value="${o}" ${o===cur?'selected':''}>${o}</option>`).join('');}
 
 // ── SEARCH SYNC ──
-function syncSearch(){const sb=document.getElementById('sb-search').value;const gs=document.getElementById('f-search').value;if(document.activeElement===document.getElementById('sb-search'))document.getElementById('f-search').value=sb;else document.getElementById('sb-search').value=gs;render();}
+let _syncSearchTimer = null;
+function syncSearch(){
+  const sbVal=document.getElementById('sb-search').value;
+  const gsVal=document.getElementById('f-search').value;
+  if(document.activeElement===document.getElementById('sb-search')) document.getElementById('f-search').value=sbVal;
+  else document.getElementById('sb-search').value=gsVal;
+  clearTimeout(_syncSearchTimer);
+  _syncSearchTimer = setTimeout(render, 180);
+}
 
 // ── FILTERS ──
 function getFiltered(){const q=document.getElementById('f-search').value.toLowerCase();const fs=document.getElementById('f-stage').value;const fg=document.getElementById('f-segment').value;const fo=document.getElementById('f-owner').value;const fst=document.getElementById('f-state').value;const funilId=getCurrentFunilId();return deals.filter(d=>{const search=[d.company,d.city,d.owner,d.subsegment,d.segment,d.origem,d.origem_detail].filter(Boolean).join(' ').toLowerCase();const myName = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
@@ -1437,9 +1455,10 @@ function renderDetail(d){
             <div class="section-title" style="margin-bottom:10px"><i class="ti ti-history" style="font-size:14px"></i>Histórico de interações</div>
             <div>${histHtml}</div>
           </div>
-          <!-- Excluir -->
-          <div style="padding-top:8px;border-top:1px solid var(--border)">
+          <!-- Excluir / Duplicar -->
+          <div style="padding-top:8px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center">
             <button class="btn-danger" onclick="confirmDeleteDeal(${JSON.stringify(d.id)})"><i class="ti ti-trash"></i> Excluir oportunidade</button>
+            <button class="btn-secondary" onclick="duplicateDeal(${JSON.stringify(d.id)})" style="font-size:13px"><i class="ti ti-copy" style="font-size:13px"></i> Duplicar</button>
           </div>
         </div>
       </div>
@@ -1665,7 +1684,7 @@ async function saveDealForm() {
       history: notes ? [{date:new Date().toLocaleString('pt-BR'),type:'Nota',text:notes}] : [],
       activities: [], user_id: currentUser.id, funil_id: getCurrentFunilId()
     };
-    const {data, error} = await sb.from('deals').insert([{...deal,history:JSON.stringify(deal.history),activities:JSON.stringify(deal.activities)}]).select().single();
+    const {data, error} = await sb.from('deals').insert([{...deal,history:JSON.stringify(deal.history),activities:JSON.stringify(deal.activities),contacts:JSON.stringify([])}]).select().single();
     if (error) { toast('Erro ao criar: '+error.message,'error'); return; }
     deals.unshift(parseDeal(data));
     await loadCrmUsers(); populateFilters(); render();
@@ -1916,6 +1935,46 @@ function setView(v) {
   document.getElementById('page-title').textContent = titles[v]||'';
   if (v==='activities') renderAllActivities();
   if (v==='users') loadUsersView();
+}
+
+// ── ESCAPE FECHA MODAL ──
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  // fecha o modal com z-index mais alto que estiver aberto
+  const order = ['modal-opts','modal-contact','modal-funil','modal-new','modal-detail'];
+  for (const id of order) {
+    const el = document.getElementById(id);
+    if (el && el.classList.contains('open')) { el.classList.remove('open'); break; }
+  }
+});
+
+// ── DUPLICAR DEAL ──
+async function duplicateDeal(id) {
+  const src = deals.find(x => x.id === id);
+  if (!src) return;
+  const copy = {
+    company: src.company + ' (cópia)',
+    mrr: src.mrr || 0,
+    segment: src.segment || '',
+    subsegment: src.subsegment || '',
+    state: src.state || '',
+    city: src.city || '',
+    owner: src.owner || '',
+    origem: src.origem || '',
+    origem_detail: src.origem_detail || '',
+    stage: src.stage,
+    funil_id: src.funil_id || 'default',
+    user_id: currentUser.id,
+    history: JSON.stringify([{date: new Date().toLocaleString('pt-BR'), type:'Nota', text:'Deal duplicado de "'+src.company+'"'}]),
+    activities: JSON.stringify([]),
+    contacts: JSON.stringify([])
+  };
+  const {data, error} = await sb.from('deals').insert([copy]).select().single();
+  if (error) { toast('Erro ao duplicar: '+error.message,'error'); return; }
+  deals.unshift(parseDeal(data));
+  closeModal('modal-detail');
+  render();
+  toast('Deal duplicado!');
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
