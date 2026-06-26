@@ -207,7 +207,8 @@
     .deal-sidebar { width: 280px; min-width: 280px; background: var(--bg-surface); border-right: 1px solid var(--border); overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
     .deal-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
     .deal-main-top { padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--bg-card); }
-    .deal-main-scroll { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+    .deal-main-scroll { flex: 1; overflow-y: auto; padding: 20px 48px; display: flex; flex-direction: column; gap: 20px; }
+    .deal-main-top { padding: 16px 48px; border-bottom: 1px solid var(--border); background: var(--bg-card); }
     .sidebar-section-title { font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
     .sidebar-field { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
     .sidebar-field:last-child { border-bottom: none; }
@@ -1366,6 +1367,7 @@ function renderDetail(d){
       <div class="contact-name" style="font-size:13px">${ct.name}</div>
       ${ct.company?`<div style="font-size:12px;font-weight:600;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ct.company}</div>`:''}
       ${ct.role?`<div class="contact-role" style="font-size:11px">${ct.role}</div>`:''}
+      ${ct.segment?`<div style="font-size:11px;color:var(--accent);font-weight:600">${ct.segment}</div>`:''}
     </div>`).join('') : '<p style="font-size:13px;color:var(--text-3);margin-bottom:8px">Nenhum contato cadastrado.</p>';
 
   const _currentUserName = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
@@ -1380,15 +1382,15 @@ function renderDetail(d){
           <div onclick="inlineEditText(${JSON.stringify(d.id)},'company',this)" title="Clique para editar" style="cursor:pointer;font-size:18px;font-weight:800;color:var(--accent);margin:0">${d.company}</div>
           <div onclick="inlineEditMrr(${JSON.stringify(d.id)},this)" title="Clique para editar MRR" style="cursor:pointer;font-size:18px;font-weight:800;color:var(--text)">${d.mrr?fmtMrr(d.mrr)+' MRR':'<span style="color:var(--text-3);font-size:13px;font-weight:400">+ MRR</span>'}</div>
         </div>
-        <!-- Linha 2: campos com label -->
+        <!-- Linha 2: campos com label - always shown -->
         <div style="display:flex;align-items:flex-start;justify-content:center;gap:16px;flex-wrap:wrap">
-          ${d.owner?`<div onclick="inlineEditOwner(${JSON.stringify(d.id)},this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Responsável</div><span class="info-val" style="font-size:12px;color:var(--text-2)">${d.owner}</span></div>`:''}
-          ${d.segment?`<div onclick="inlineEditSelect(${JSON.stringify(d.id)},'segment',getOpts('segmentos'),this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Segmento</div><span class="info-val" style="font-size:12px;color:var(--text-2)">${d.segment}</span></div>`:''}
-          ${d.subsegment?`<div onclick="inlineEditText(${JSON.stringify(d.id)},'subsegment',this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Sub-segmento</div><span class="info-val" style="font-size:12px;color:var(--text-2)">${d.subsegment}</span></div>`:''}
-          ${d.origem?`<div onclick="inlineEditSelect(${JSON.stringify(d.id)},'origem',getOpts('origens'),this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Origem</div><span class="info-val" style="font-size:12px;color:var(--text-2)">${d.origem}</span></div>`:''}
-          ${d.origem_detail?`<div onclick="inlineEditSelect(${JSON.stringify(d.id)},'origem_detail',getOpts('origens_detalhadas'),this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Origem detalhada</div><span class="info-val" style="font-size:12px;color:var(--text-2)">${d.origem_detail}</span></div>`:''}
-          ${d.state?`<div style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Estado</div><span onclick="inlineEditState(${JSON.stringify(d.id)},this.closest('div'))" class="info-val" style="font-size:12px;color:var(--text-2)">${d.state}</span></div>`:''}
-          ${d.city?`<div style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Município</div><span onclick="inlineEditCity(${JSON.stringify(d.id)},this.closest('div'))" class="info-val" style="font-size:12px;color:var(--text-2)">${d.city}</span></div>`:''}
+          <div onclick="inlineEditOwner(${JSON.stringify(d.id)},this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Responsável</div><span class="info-val" style="font-size:12px;color:${d.owner?'var(--text-2)':'var(--text-3)'}">${d.owner||'—'}</span></div>
+          <div onclick="inlineEditSelect(${JSON.stringify(d.id)},'segment',getOpts('segmentos'),this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Segmento</div><span class="info-val" style="font-size:12px;color:${d.segment?'var(--text-2)':'var(--text-3)'}">${d.segment||'—'}</span></div>
+          <div onclick="inlineEditText(${JSON.stringify(d.id)},'subsegment',this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Sub-segmento</div><span class="info-val" style="font-size:12px;color:${d.subsegment?'var(--text-2)':'var(--text-3)'}">${d.subsegment||'—'}</span></div>
+          <div onclick="inlineEditSelect(${JSON.stringify(d.id)},'origem',getOpts('origens'),this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Origem</div><span class="info-val" style="font-size:12px;color:${d.origem?'var(--text-2)':'var(--text-3)'}">${d.origem||'—'}</span></div>
+          <div onclick="inlineEditSelect(${JSON.stringify(d.id)},'origem_detail',getOpts('origens_detalhadas'),this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Origem detalhada</div><span class="info-val" style="font-size:12px;color:${d.origem_detail?'var(--text-2)':'var(--text-3)'}">${d.origem_detail||'—'}</span></div>
+          <div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Estado</div><span onclick="inlineEditState(${JSON.stringify(d.id)},this.closest('div'))" class="info-val" style="cursor:pointer;font-size:12px;color:${d.state?'var(--text-2)':'var(--text-3)'}">${d.state||'—'}</span></div>
+          <div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Município</div><span onclick="inlineEditCity(${JSON.stringify(d.id)},this.closest('div'))" class="info-val" style="cursor:pointer;font-size:12px;color:${d.city?'var(--text-2)':'var(--text-3)'}">${d.city||'—'}</span></div>
           <div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Etapa</div><select style="font-size:12px;font-weight:600;border:none;background:none;color:var(--text-2);font-family:var(--font);cursor:pointer;padding:0;text-align:center" onchange="changeStage(${JSON.stringify(d.id)},this.value)">${STAGES.map(s=>`<option value="${s}" ${s===d.stage?'selected':''}>${s}</option>`).join('')}</select></div>
         </div>
       </div>
@@ -1407,8 +1409,9 @@ function renderDetail(d){
       </div>
       <!-- MAIN -->
       <div class="deal-main">
-        <!-- FIXED TOP: Registrar interação -->
+        <!-- FIXED TOP: Anotações -->
         <div class="deal-main-top">
+          <div style="margin-bottom:8px"><span class="section-title" style="margin:0"><i class="ti ti-notes" style="font-size:14px"></i>Anotações</span></div>
           <div class="hist-form">
             <textarea id="hist-text-inp" placeholder="Registre a interação ou anote informações relevantes..." style="font-family:var(--font);font-size:13px;resize:vertical;min-height:52px"></textarea>
             <button class="btn-add" onclick="addHistory(${JSON.stringify(d.id)})"><i class="ti ti-send"></i> Registrar</button>
