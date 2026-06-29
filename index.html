@@ -36,7 +36,7 @@
       --shadow-sm: 0 1px 3px rgba(0,0,0,0.3); --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
     }
 
-    html, body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
+    html, body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; transition: background .3s, color .3s; }
 
     /* ── LAYOUT ── */
     .app-layout { display: flex; min-height: 100vh; }
@@ -114,7 +114,7 @@
     .funil-add-btn:hover { background: rgba(255,255,255,.05); color: rgba(255,255,255,.6); }
 
     /* ── TOPBAR ── */
-    .topbar { background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 0 24px; height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 16px; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow-sm); }
+    .topbar { background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 0 24px; height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 16px; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow-sm); transition: background .3s, border-color .3s; }
     .topbar-left { display: flex; align-items: center; gap: 12px; flex: 1; }
     .page-title { font-size: 18px; font-weight: 700; color: var(--text); }
     .global-search { position: relative; flex: 1; max-width: 400px; }
@@ -459,8 +459,6 @@
         </div>
       </div>
       <div class="topbar-right">
-        <button class="btn-secondary" onclick="exportXLSX()"><i class="ti ti-file-spreadsheet"></i> Excel</button>
-        <button class="btn-secondary" onclick="exportCSV()"><i class="ti ti-download"></i> CSV</button>
         <button class="btn-secondary" id="btn-toggle-filters" onclick="toggleFilters()"><i class="ti ti-filter"></i> Filtros</button>
         <button class="btn-secondary" id="btn-my-deals" onclick="toggleMyDeals()" title="Meus deals"><i class="ti ti-user"></i> Meus deals</button>
         <button class="btn-primary" onclick="openNewDeal()"><i class="ti ti-plus"></i> Novo Deal</button>
@@ -474,7 +472,10 @@
           <div class="filter-group"><label>Etapa</label><select id="f-stage" onchange="render()"><option value="">Todas</option></select></div>
           <div class="filter-group"><label>Segmento</label><select id="f-segment" onchange="render()"><option value="">Todos</option></select></div>
           <div class="filter-group"><label>Responsável</label><select id="f-owner" onchange="render()"><option value="">Todos</option></select></div>
+          <div class="filter-group"><label>Origem</label><select id="f-origem" onchange="render()"><option value="">Todas</option></select></div>
+          <div class="filter-group"><label>Origem Detalhada</label><select id="f-origem-detail" onchange="render()"><option value="">Todas</option></select></div>
           <div class="filter-group"><label>Estado</label><select id="f-state" onchange="render()"><option value="">Todos</option></select></div>
+          <div class="filter-group"><label>Município</label><select id="f-city" onchange="render()"><option value="">Todos</option></select></div>
           <div class="filter-group" style="justify-content:flex-end;margin-left:auto">
             <label>&nbsp;</label>
             <button class="btn-cancel" onclick="clearFilters()" style="height:36px"><i class="ti ti-x" style="font-size:12px;margin-right:4px"></i>Limpar</button>
@@ -1168,9 +1169,23 @@ function syncSearch(){
 }
 
 // ── FILTERS ──
-function getFiltered(){const q=document.getElementById('f-search').value.toLowerCase();const fs=document.getElementById('f-stage').value;const fg=document.getElementById('f-segment').value;const fo=document.getElementById('f-owner').value;const fst=document.getElementById('f-state').value;const funilId=getCurrentFunilId();return deals.filter(d=>{const search=[d.company,d.city,d.owner,d.subsegment,d.segment,d.origem,d.origem_detail].filter(Boolean).join(' ').toLowerCase();const myName = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
-    return(d.funil_id||'default')===funilId&&(!q||search.includes(q))&&(!fs||d.stage===fs)&&(!fg||d.segment===fg)&&(!fo||d.owner===fo)&&(!fst||d.state===fst)&&(!window.myDealsOnly||d.owner===myName);});}
-function populateFilters(){const owners=crmUsers.length?crmUsers:[...new Set(deals.map(d=>d.owner).filter(Boolean))].sort();const states=[...new Set(deals.map(d=>d.state).filter(Boolean))].sort();const fEl=(id,cur,opts)=>{const el=document.getElementById(id);const first=el.options[0].outerHTML;el.innerHTML=first+opts.map(o=>`<option value="${o}">${o}</option>`).join('');el.value=cur;};fEl('f-owner',document.getElementById('f-owner').value,owners);fEl('f-state',document.getElementById('f-state').value,states);fEl('f-stage',document.getElementById('f-stage').value,STAGES);renderFunilList();refreshFormDropdowns();}
+function getFiltered(){const q=document.getElementById('f-search').value.toLowerCase();const fs=document.getElementById('f-stage').value;const fg=document.getElementById('f-segment').value;const fo=document.getElementById('f-owner').value;const fst=document.getElementById('f-state').value;const fori=document.getElementById('f-origem').value;const forid=document.getElementById('f-origem-detail').value;const fcity=document.getElementById('f-city').value;const funilId=getCurrentFunilId();return deals.filter(d=>{const search=[d.company,d.city,d.owner,d.subsegment,d.segment,d.origem,d.origem_detail].filter(Boolean).join(' ').toLowerCase();const myName = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
+    return(d.funil_id||'default')===funilId&&(!q||search.includes(q))&&(!fs||d.stage===fs)&&(!fg||d.segment===fg)&&(!fo||d.owner===fo)&&(!fst||d.state===fst)&&(!fori||d.origem===fori)&&(!forid||d.origem_detail===forid)&&(!fcity||d.city===fcity)&&(!window.myDealsOnly||d.owner===myName);});}
+function populateFilters(){
+  const owners=crmUsers.length?crmUsers:[...new Set(deals.map(d=>d.owner).filter(Boolean))].sort();
+  const states=[...new Set(deals.map(d=>d.state).filter(Boolean))].sort();
+  const origens=[...new Set(deals.map(d=>d.origem).filter(Boolean))].sort();
+  const origensDetail=[...new Set(deals.map(d=>d.origem_detail).filter(Boolean))].sort();
+  const cities=[...new Set(deals.map(d=>d.city).filter(Boolean))].sort();
+  const fEl=(id,cur,opts)=>{const el=document.getElementById(id);if(!el)return;const first=el.options[0].outerHTML;el.innerHTML=first+opts.map(o=>`<option value="${o}">${o}</option>`).join('');el.value=cur;};
+  fEl('f-owner',document.getElementById('f-owner').value,owners);
+  fEl('f-state',document.getElementById('f-state').value,states);
+  fEl('f-stage',document.getElementById('f-stage').value,STAGES);
+  fEl('f-origem',document.getElementById('f-origem').value,origens);
+  fEl('f-origem-detail',document.getElementById('f-origem-detail').value,origensDetail);
+  fEl('f-city',document.getElementById('f-city').value,cities);
+  renderFunilList();refreshFormDropdowns();
+}
 function populateOwners(selectId,selected){
   const el=document.getElementById(selectId);
   if(!el)return;
@@ -1182,7 +1197,7 @@ function populateOwners(selectId,selected){
     el.value=selected||'';
   }
 }
-function clearFilters(){['f-search','f-stage','f-segment','f-owner','f-state'].forEach(id=>document.getElementById(id).value='');document.getElementById('sb-search').value='';render();}
+function clearFilters(){['f-search','f-stage','f-segment','f-owner','f-state','f-origem','f-origem-detail','f-city'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('sb-search').value='';render();}
 function toggleFilters(){const panel=document.getElementById('filter-bar-panel');const btn=document.getElementById('btn-toggle-filters');const isOpen=panel.classList.contains('open');panel.classList.toggle('open',!isOpen);btn.style.background=!isOpen?'var(--brand)':'';btn.style.color=!isOpen?'#fff':'';btn.style.borderColor=!isOpen?'var(--brand)':'';}
 
 // ── KANBAN ──
@@ -1364,7 +1379,7 @@ function renderDetail(d){
       <div style="flex:1">
         <div class="act-title-txt ${a.done?'done':''}">${a.title}</div>
         <div class="act-meta"><span ${od?'class="overdue"':''}>${fmtDate(a.date)}</span>${od?' · <span class="overdue">VENCIDA</span>':''}${a.owner?` · <span style="color:var(--text-3)">${a.owner}</span>`:''}</div>
-        ${a.comment?`<div style="font-size:12px;color:var(--text-2);margin-top:4px;background:var(--bg-card);border-radius:5px;padding:6px 8px;border:1px solid var(--accent);white-space:pre-wrap;cursor:pointer;position:relative" onclick="toggleActivityComment('${d.id}','${a.id}')" title="Clique para editar">${a.comment} <i class="ti ti-pencil" style="font-size:10px;color:var(--text-3);vertical-align:middle"></i></div>`:''}
+        ${a.comment?`<div style="font-size:11px;color:var(--text-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px"><i class="ti ti-message" style="font-size:10px;vertical-align:middle;margin-right:3px"></i>${a.comment}</div>`:''}
       </div>
       <div style="display:flex;gap:2px">
         <button onclick="toggleActivityComment('${d.id}','${a.id}')" style="background:none;border:none;cursor:pointer;color:${a.comment?'var(--accent)':'var(--text-3)'};font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="${a.comment?'Editar comentário':'Adicionar comentário'}"><i class="ti ti-message"></i></button>
