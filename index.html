@@ -1240,6 +1240,7 @@ function renderKanban(){
           ${d.segment?`<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">${d.segment}</span>`:''}
           ${d.state?`<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">${d.state}</span>`:''}
           ${d.city?`<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">${d.city}</span>`:''}
+          ${(d.city||d.state)?`<a href="https://waze.com/ul?q=${encodeURIComponent([d.city,d.state].filter(Boolean).join(', '))}&navigate=yes" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Abrir no Waze" style="display:inline-flex;align-items:center;color:#33CCFF;font-size:13px;padding:2px 4px;border-radius:4px;text-decoration:none"><i class="ti ti-map-pin-filled"></i></a>`:''}
         </div>
         <div class="deal-footer">
           ${d.owner?`<div class="deal-owner-txt"><i class="ti ti-user" style="font-size:11px"></i>${d.owner}</div>`:'<div></div>'}
