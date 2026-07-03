@@ -1324,7 +1324,7 @@ function renderAllActivities(){
     const isToday=a.date===today;
     const statusColor = od?'#EF4444':isToday?'#22C55E':a.done?'#22C55E':'var(--text-3)';
     const statusText = a.done?'Concluída':od?'Vencida':isToday?'Hoje':'Pendente';
-    return `<tr class="${a.done?'done':''}" onclick="openDeal(${JSON.stringify(a.dealId)})">
+    return `<tr class="${a.done?'done':''}" data-act-id="${a.id}" onclick="openDeal(${JSON.stringify(a.dealId)})">
       <td onclick="event.stopPropagation()">
         <div class="act-check ${a.done?'done':''}" onclick="toggleActGlobal(${JSON.stringify(a.dealId)},${JSON.stringify(a.id)})" style="margin:0 auto"><i class="ti ti-check"></i></div>
       </td>
@@ -1533,9 +1533,24 @@ async function toggleActGlobal(dealId, actId) {
     if(!d.history) d.history=[];
     d.history.unshift({date:new Date().toLocaleString('pt-BR'),type:'Atividade',text:histText,author});
   }
+  // Atualização imediata do DOM sem re-render
+  const showDone = document.getElementById('show-done-acts')?.checked;
+  const tr = document.querySelector(`tr[data-act-id="${actId}"]`);
+  if (tr) {
+    if (a.done && !showDone) {
+      tr.style.transition = 'opacity .15s';
+      tr.style.opacity = '0';
+      setTimeout(() => tr.remove(), 150);
+    } else {
+      const check = tr.querySelector('.act-check');
+      if (check) check.classList.toggle('done', a.done);
+      const titleDiv = tr.querySelector('td:nth-child(2) div');
+      if (titleDiv) { titleDiv.style.textDecoration = a.done ? 'line-through' : ''; titleDiv.style.color = a.done ? 'var(--text-3)' : ''; }
+      const statusCell = tr.querySelector('td:last-child span');
+      if (statusCell) { statusCell.style.color = a.done ? '#22C55E' : 'var(--text-3)'; statusCell.textContent = a.done ? 'Concluída' : 'Pendente'; }
+    }
+  }
   render();
-  const actView = document.getElementById('view-activities');
-  if (actView && actView.style.display !== 'none') setTimeout(renderAllActivities, 0);
   saveDeal(d);
 }
 
