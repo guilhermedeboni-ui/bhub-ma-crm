@@ -1390,7 +1390,7 @@ function renderDetail(d){
   }).join('') || '<p style="font-size:13px;color:var(--text-3)">Nenhuma atividade pendente.</p>';
 
   const contactsHtml = contacts.length ? contacts.map((ct,i)=>`
-    <div class="contact-card" draggable="true" data-contact-idx="${i}" style="padding:8px 10px">
+    <div class="contact-card" draggable="true" data-contact-idx="${i}" style="padding:8px 10px;cursor:pointer" onclick="expandContact(event,${JSON.stringify(d.id)},${i})">
       <div class="contact-actions">
         <button class="btn-icon-sm" onclick="expandContact(event,${JSON.stringify(d.id)},${i})" title="Expandir"><i class="ti ti-arrows-maximize"></i></button>
         <button class="btn-icon-sm" onclick="openEditContact(${JSON.stringify(d.id)},${i})" title="Editar"><i class="ti ti-pencil"></i></button>
@@ -1446,7 +1446,7 @@ function renderDetail(d){
         <div class="deal-main-top">
           <div style="margin-bottom:8px"><span class="section-title" style="margin:0"><i class="ti ti-notes" style="font-size:14px"></i>Anotações</span></div>
           <div class="hist-form">
-            <textarea id="hist-text-inp" placeholder="Registre a interação ou anote informações relevantes..." style="font-family:var(--font);font-size:13px;resize:vertical;min-height:52px"></textarea>
+            <textarea id="hist-text-inp" placeholder="Registre a interação ou anote informações relevantes..." style="font-family:var(--font);font-size:13px;resize:none;min-height:52px;overflow-y:hidden" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
             <button class="btn-add" onclick="addHistory(${JSON.stringify(d.id)})"><i class="ti ti-send"></i> Registrar</button>
           </div>
         </div>
@@ -1514,7 +1514,7 @@ async function toggleAct(dealId,actId){
     // Reabrindo
     a.done=false;
   }
-  await saveDeal(d);renderDetail(d);render();
+  renderDetail(d);render();saveDeal(d);
 }
 async function toggleActGlobal(dealId, actId) {
   const author=currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
@@ -1864,7 +1864,7 @@ function toggleActivityComment(dealId, actId) {
   div.className = 'act-comment-input';
   div.style.cssText = 'margin-top:8px;width:100%;padding:0 4px';
   div.innerHTML = `<div style="display:flex;gap:6px;align-items:flex-end">
-    <textarea id="comment-inp-${actId}" placeholder="Adicione um comentário..." style="flex:1;min-height:52px;font-size:12px;padding:6px 9px;resize:vertical;font-family:var(--font)">${a.comment||''}</textarea>
+    <textarea id="comment-inp-${actId}" placeholder="Adicione um comentário..." style="flex:1;min-height:52px;font-size:12px;padding:6px 9px;resize:none;overflow-y:hidden;font-family:var(--font)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'">${a.comment||''}</textarea>
     <button class="act-comment-save-btn" style="background:var(--accent);border:none;color:#fff;font-size:11px;font-weight:600;font-family:var(--font);padding:7px 12px;border-radius:var(--radius);cursor:pointer;white-space:nowrap">Salvar</button>
   </div>`;
   itemEl.appendChild(div);
