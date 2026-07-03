@@ -1220,9 +1220,16 @@ function renderKanban(){
     </div><div class="lane-body" data-stage="${stage}"></div>`;
     kb.appendChild(lane);
     const body=lane.querySelector('.lane-body');
-    body.addEventListener('dragover',e=>{e.preventDefault();body.classList.add('drag-over');});
-    body.addEventListener('dragleave',()=>body.classList.remove('drag-over'));
-    body.addEventListener('drop',async e=>{e.preventDefault();body.classList.remove('drag-over');if(!draggedDealId)return;const d=deals.find(x=>x.id===draggedDealId);if(!d||d.stage===stage)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Etapa alterada para "'+stage+'".'});d.stage=stage;await saveDeal(d);toast('Etapa atualizada');render();});
+    // Drop aceito tanto no body quanto no lane inteiro (header excluído)
+    const dropHandler = async e=>{e.preventDefault();body.classList.remove('drag-over');lane.classList.remove('drag-over');if(!draggedDealId)return;const d=deals.find(x=>x.id===draggedDealId);if(!d||d.stage===stage)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Etapa alterada para "'+stage+'".'});d.stage=stage;saveDeal(d);toast('Etapa atualizada');render();};
+    const overHandler = e=>{e.preventDefault();body.classList.add('drag-over');};
+    const leaveHandler = e=>{if(!lane.contains(e.relatedTarget)){body.classList.remove('drag-over');}};
+    body.addEventListener('dragover', overHandler);
+    body.addEventListener('dragleave', leaveHandler);
+    body.addEventListener('drop', dropHandler);
+    lane.addEventListener('dragover', overHandler);
+    lane.addEventListener('dragleave', leaveHandler);
+    lane.addEventListener('drop', dropHandler);
     const addBtnTop=document.createElement('div');
     addBtnTop.className='lane-add-btn';
     addBtnTop.style.marginBottom='4px';
@@ -1526,10 +1533,10 @@ async function toggleActGlobal(dealId, actId) {
     if(!d.history) d.history=[];
     d.history.unshift({date:new Date().toLocaleString('pt-BR'),type:'Atividade',text:histText,author});
   }
-  await saveDeal(d);
   render();
   const actView = document.getElementById('view-activities');
   if (actView && actView.style.display !== 'none') renderAllActivities();
+  saveDeal(d);
 }
 
 // ── DELETE ACTIVITY ──
@@ -1742,7 +1749,10 @@ function expandContact(e, dealId, idx) {
         ${ct.company?`<div style="font-size:13px;font-weight:600;color:var(--text-2);margin-top:2px">${ct.company}</div>`:''}
         ${ct.segment?`<div style="font-size:11px;color:var(--text-3);margin-top:2px">${ct.segment}</div>`:''}
       </div>
-      <button onclick="this.closest('.expanded-contact').remove()" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:16px;padding:2px"><i class="ti ti-x"></i></button>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button onclick="this.closest('.expanded-contact').remove();openEditContact(${JSON.stringify(dealId)},${idx})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:15px;padding:2px;display:flex;align-items:center" title="Editar"><i class="ti ti-pencil"></i></button>
+        <button onclick="this.closest('.expanded-contact').remove()" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:16px;padding:2px;display:flex;align-items:center"><i class="ti ti-x"></i></button>
+      </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
       ${ct.role?`<div><span style="color:var(--text-3);font-size:11px">Cargo</span><div style="color:var(--text);font-weight:500">${ct.role}</div></div>`:''}
