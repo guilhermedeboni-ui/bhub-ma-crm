@@ -1535,19 +1535,24 @@ async function toggleActGlobal(dealId, actId) {
   }
   // Atualização imediata do DOM sem re-render
   const showDone = document.getElementById('show-done-acts')?.checked;
-  const tr = document.querySelector(`tr[data-act-id="${actId}"]`);
-  if (tr) {
-    if (a.done && !showDone) {
-      tr.style.transition = 'opacity .15s';
-      tr.style.opacity = '0';
-      setTimeout(() => tr.remove(), 150);
+  const actView = document.getElementById('view-activities');
+  if (actView && actView.style.display !== 'none') {
+    const tr = document.querySelector('tr[data-act-id="' + String(actId) + '"]');
+    if (tr) {
+      if (a.done && !showDone) {
+        tr.style.transition = 'opacity .15s';
+        tr.style.opacity = '0';
+        setTimeout(() => tr.remove(), 150);
+      } else {
+        const check = tr.querySelector('.act-check');
+        if (check) check.classList.toggle('done', a.done);
+        const titleDiv = tr.querySelector('td:nth-child(2) div');
+        if (titleDiv) { titleDiv.style.textDecoration = a.done ? 'line-through' : ''; titleDiv.style.color = a.done ? 'var(--text-3)' : ''; }
+        const statusCell = tr.querySelector('td:last-child span');
+        if (statusCell) { statusCell.style.color = a.done ? '#22C55E' : 'var(--text-3)'; statusCell.textContent = a.done ? 'Concluída' : 'Pendente'; }
+      }
     } else {
-      const check = tr.querySelector('.act-check');
-      if (check) check.classList.toggle('done', a.done);
-      const titleDiv = tr.querySelector('td:nth-child(2) div');
-      if (titleDiv) { titleDiv.style.textDecoration = a.done ? 'line-through' : ''; titleDiv.style.color = a.done ? 'var(--text-3)' : ''; }
-      const statusCell = tr.querySelector('td:last-child span');
-      if (statusCell) { statusCell.style.color = a.done ? '#22C55E' : 'var(--text-3)'; statusCell.textContent = a.done ? 'Concluída' : 'Pendente'; }
+      renderAllActivities();
     }
   }
   render();
