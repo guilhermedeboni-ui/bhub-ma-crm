@@ -152,13 +152,13 @@
     .kanban::-webkit-scrollbar { height: 6px; }
     .kanban::-webkit-scrollbar-track { background: var(--bg-surface); border-radius: 3px; }
     .kanban::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 3px; }
-    .lane { width: 240px; min-width: 240px; flex-shrink: 0; display: flex; flex-direction: column; border-radius: var(--radius-lg); overflow: hidden; background: var(--bg-surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+    .lane { width: 240px; min-width: 240px; flex-shrink: 0; display: flex; flex-direction: column; border-radius: var(--radius-lg); background: var(--bg-surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
     .lane-head { padding: 12px 12px 10px; display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 2px solid transparent; }
     .lane-head-left { display: flex; flex-direction: column; gap: 2px; }
     .lane-head-title { font-size: 13px; font-weight: 700; }
     .lane-head-mrr { font-size: 12px; font-weight: 600; opacity: .75; }
     .lane-count { font-size: 11px; font-weight: 700; background: rgba(0,0,0,.1); padding: 2px 8px; border-radius: 10px; margin-top: 2px; }
-    .lane-body { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 6px; min-height: 200px; transition: background .15s; }
+    .lane-body { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 6px; min-height: calc(100vh - 260px); transition: background .15s; }
     .lane-body.drag-over { background: rgba(55,138,221,.08); }
     .lane-add-btn { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px; border-radius: var(--radius); border: 1.5px dashed var(--border-md); color: var(--text-3); font-size: 12px; font-weight: 600; cursor: pointer; transition: .12s; }
     .lane-add-btn:hover { background: var(--bg-card); color: var(--text-2); border-color: var(--text-3); }
@@ -1535,7 +1535,7 @@ async function toggleActGlobal(dealId, actId) {
   }
   render();
   const actView = document.getElementById('view-activities');
-  if (actView && actView.style.display !== 'none') renderAllActivities();
+  if (actView && actView.style.display !== 'none') setTimeout(renderAllActivities, 0);
   saveDeal(d);
 }
 
