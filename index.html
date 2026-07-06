@@ -1521,7 +1521,17 @@ async function toggleAct(dealId,actId){
     // Reabrindo
     a.done=false;
   }
-  renderDetail(d);render();saveDeal(d);
+  renderDetail(d);render();
+  const actView=document.getElementById('view-activities');
+  if(actView&&actView.style.display!=='none'){
+    const showDone=document.getElementById('show-done-acts')?.checked;
+    const tr=document.querySelector('tr[data-act-id="'+String(actId)+'"]');
+    if(tr){
+      if(a.done&&!showDone){tr.style.transition='opacity .15s';tr.style.opacity='0';setTimeout(()=>tr.remove(),150);}
+      else renderAllActivities();
+    } else renderAllActivities();
+  }
+  saveDeal(d);
 }
 async function toggleActGlobal(dealId, actId) {
   const author=currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
@@ -1903,7 +1913,10 @@ function toggleActivityComment(dealId, actId) {
     e.stopPropagation();
     await saveActivityComment(dealId, actId);
   });
-  setTimeout(() => document.getElementById('comment-inp-'+actId)?.focus(), 50);
+  setTimeout(() => {
+    const inp = document.getElementById('comment-inp-'+actId);
+    if (inp) { inp.focus(); inp.closest('.deal-main-scroll')?.scrollBy({top: 120, behavior: 'smooth'}); }
+  }, 50);
 }
 
 async function saveActivityComment(dealId, actId) {
