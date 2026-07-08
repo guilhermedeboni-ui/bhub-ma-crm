@@ -1386,10 +1386,10 @@ function renderDetail(d){
       <div style="flex:1">
         <div class="act-title-txt ${a.done?'done':''}">${a.title}</div>
         <div class="act-meta"><span ${od?'class="overdue"':''}>${fmtDate(a.date)}</span>${od?' · <span class="overdue">VENCIDA</span>':''}${a.owner?` · <span style="color:var(--text-3)">${a.owner}</span>`:''}</div>
-        ${a.comment?`<div style="font-size:12px;color:var(--text-2);margin-top:4px;background:var(--bg-card);border-radius:5px;padding:6px 8px;border:1px solid var(--border-md);white-space:pre-wrap;cursor:pointer;position:relative" onclick="toggleActivityComment('${d.id}','${a.id}')" title="Clique para editar">${a.comment} <i class="ti ti-pencil" style="font-size:10px;color:var(--text-3);vertical-align:middle"></i></div>`:''}
+        ${a.comment?`<div style="font-size:12px;color:var(--text-2);margin-top:4px;background:var(--bg-card);border-radius:5px;padding:6px 8px;border:1px solid var(--border-md);white-space:pre-wrap;cursor:pointer;position:relative" onclick="toggleActivityComment('${d.id}','${a.id}',this)" title="Clique para editar">${a.comment} <i class="ti ti-pencil" style="font-size:10px;color:var(--text-3);vertical-align:middle"></i></div>`:''}
       </div>
       <div style="display:flex;gap:2px">
-        <button onclick="toggleActivityComment('${d.id}','${a.id}')" style="background:none;border:none;cursor:pointer;color:${a.comment?'var(--accent)':'var(--text-3)'};font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="${a.comment?'Editar comentário':'Adicionar comentário'}"><i class="ti ti-message"></i></button>
+        <button onclick="toggleActivityComment('${d.id}','${a.id}',this)" style="background:none;border:none;cursor:pointer;color:${a.comment?'var(--accent)':'var(--text-3)'};font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="${a.comment?'Editar comentário':'Adicionar comentário'}"><i class="ti ti-message"></i></button>
         <button onclick="editActivity(${JSON.stringify(d.id)},${JSON.stringify(a.id)})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="Editar"><i class="ti ti-pencil"></i></button>
         <button onclick="deleteActivity(${JSON.stringify(d.id)},${JSON.stringify(a.id)})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="Excluir"><i class="ti ti-trash"></i></button>
       </div>
@@ -1892,30 +1892,49 @@ async function togglePinHistory(dealId, origIdx) {
 }
 
 // ── ACTIVITY COMMENT ──
-function toggleActivityComment(dealId, actId) {
+function toggleActivityComment(dealId, actId, triggerBtn) {
   const d = deals.find(x=>x.id==dealId); if(!d)return;
   const a = d.activities.find(x=>x.id==actId); if(!a)return;
-  const itemEl = document.querySelector('[data-act-id="'+actId+'"]');
-  if (!itemEl) return;
-  // If textarea already open, close it
-  const commentDiv = itemEl.querySelector('.act-comment-input');
-  if (commentDiv) { commentDiv.remove(); return; }
-  const div = document.createElement('div');
-  div.className = 'act-comment-input';
-  div.style.cssText = 'margin-top:8px;width:100%;padding:0 4px';
-  div.innerHTML = `<div style="display:flex;gap:6px;align-items:flex-end">
-    <textarea id="comment-inp-${actId}" placeholder="Adicione um comentário..." style="flex:1;min-height:52px;font-size:12px;padding:6px 9px;resize:none;overflow-y:hidden;font-family:var(--font)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'">${a.comment||''}</textarea>
-    <button class="act-comment-save-btn" style="background:var(--accent);border:none;color:#fff;font-size:11px;font-weight:600;font-family:var(--font);padding:7px 12px;border-radius:var(--radius);cursor:pointer;white-space:nowrap">Salvar</button>
+  // Remove qualquer popover aberto
+  document.querySelectorAll('.act-comment-popover').forEach(el=>el.remove());
+  // Se clicou no mesmo botão que já tinha popover aberto, apenas fecha
+  if (triggerBtn && triggerBtn._commentOpen) { triggerBtn._commentOpen = false; return; }
+  if (triggerBtn) triggerBtn._commentOpen = true;
+  const pop = document.createElement('div');
+  pop.className = 'act-comment-popover';
+  // Posicionar com base no botão clicado
+  if (triggerBtn) {
+    const rect = triggerBtn.getBoundingClientRect();
+    const topPos = rect.bottom + 6;
+    const leftPos = Math.min(rect.left, window.innerWidth - 340);
+    pop.style.cssText = 'position:fixed;top:'+topPos+'px;left:'+leftPos+'px;width:320px;z-index:2000;background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--radius-lg);box-shadow:0 8px 24px rgba(0,0,0,.18);padding:10px;';
+  } else {
+    pop.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:320px;z-index:2000;background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--radius-lg);box-shadow:0 8px 24px rgba(0,0,0,.18);padding:10px;';
+  }
+  pop.innerHTML = `<div style="display:flex;gap:6px;align-items:flex-end">
+    <textarea id="comment-inp-${actId}" placeholder="Adicione um comentário..." style="flex:1;min-height:52px;font-size:12px;padding:6px 9px;resize:none;overflow-y:hidden;font-family:var(--font);background:var(--bg-surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'">${a.comment||''}</textarea>
+    <button class="act-comment-save-btn" style="background:var(--accent);border:none;color:#fff;font-size:11px;font-weight:600;font-family:var(--font);padding:7px 12px;border-radius:var(--radius);cursor:pointer;white-space:nowrap;align-self:flex-end">Salvar</button>
   </div>`;
-  itemEl.appendChild(div);
-  // Use addEventListener to avoid onclick attribute issues
-  div.querySelector('.act-comment-save-btn').addEventListener('click', async (e) => {
+  document.body.appendChild(pop);
+  pop.querySelector('.act-comment-save-btn').addEventListener('click', async (e) => {
     e.stopPropagation();
     await saveActivityComment(dealId, actId);
+    pop.remove();
+    if (triggerBtn) triggerBtn._commentOpen = false;
   });
+  // Fechar ao clicar fora
+  setTimeout(() => {
+    document.addEventListener('mousedown', function handler(e) {
+      if (!pop.contains(e.target) && e.target !== triggerBtn) {
+        pop.remove();
+        if (triggerBtn) triggerBtn._commentOpen = false;
+        document.removeEventListener('mousedown', handler);
+      }
+    });
+  }, 10);
   setTimeout(() => {
     const inp = document.getElementById('comment-inp-'+actId);
-    if (inp) { inp.focus(); inp.closest('.deal-main-scroll')?.scrollBy({top: 120, behavior: 'smooth'}); }
+    if (inp) { inp.focus(); if(a.comment) inp.setSelectionRange(inp.value.length, inp.value.length); }
   }, 50);
 }
 
