@@ -1390,7 +1390,7 @@ function renderDetail(d){
       </div>
       <div style="display:flex;gap:2px">
         <button onclick="toggleActivityComment('${d.id}','${a.id}',this)" style="background:none;border:none;cursor:pointer;color:${a.comment?'var(--accent)':'var(--text-3)'};font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="${a.comment?'Editar comentário':'Adicionar comentário'}"><i class="ti ti-message"></i></button>
-        <button onclick="editActivity(${JSON.stringify(d.id)},${JSON.stringify(a.id)})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="Editar"><i class="ti ti-pencil"></i></button>
+        <button onclick="editActivity(${JSON.stringify(d.id)},${JSON.stringify(a.id)},this)" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="Editar"><i class="ti ti-pencil"></i></button>
         <button onclick="deleteActivity(${JSON.stringify(d.id)},${JSON.stringify(a.id)})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="Excluir"><i class="ti ti-trash"></i></button>
       </div>
     </div>`;
@@ -1590,49 +1590,62 @@ async function deleteHistory(dealId, idx) {
 }
 
 // ── EDIT ACTIVITY ──
-function editActivity(dealId, actId) {
+function editActivity(dealId, actId, triggerBtn) {
   const d = deals.find(x=>x.id===dealId); if(!d)return;
   const a = d.activities.find(x=>x.id===actId); if(!a)return;
-  const itemEl = document.querySelector('[data-act-id="'+actId+'"]');
-  if (!itemEl) return;
+  // Remove qualquer popover de edição aberto
+  document.querySelectorAll('.act-edit-popover').forEach(el=>el.remove());
+  const pop = document.createElement('div');
+  pop.className = 'act-edit-popover';
+  if (triggerBtn) {
+    const rect = triggerBtn.getBoundingClientRect();
+    const topPos = rect.bottom + 6;
+    const leftPos = Math.min(rect.left, window.innerWidth - 380);
+    pop.style.cssText = 'position:fixed;top:'+topPos+'px;left:'+leftPos+'px;width:360px;z-index:2000;background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--radius-lg);box-shadow:0 8px 24px rgba(0,0,0,.18);padding:12px;display:flex;flex-direction:column;gap:8px;';
+  } else {
+    pop.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:360px;z-index:2000;background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--radius-lg);box-shadow:0 8px 24px rgba(0,0,0,.18);padding:12px;display:flex;flex-direction:column;gap:8px;';
+  }
   const titleInput = document.createElement('input');
   titleInput.id = 'edit-act-title-'+actId;
   titleInput.value = a.title;
-  titleInput.style.cssText = 'font-size:13px;padding:6px 9px;border:1px solid var(--border-md);border-radius:var(--radius);outline:none;width:100%';
+  titleInput.style.cssText = 'font-size:13px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);outline:none;width:100%;background:var(--bg-surface);color:var(--text);font-family:var(--font)';
   titleInput.placeholder = 'Título';
   const dateInput = document.createElement('input');
   dateInput.type = 'date';
   dateInput.id = 'edit-act-date-'+actId;
   dateInput.value = a.date||'';
-  dateInput.style.cssText = 'font-size:13px;padding:6px 9px;cursor:pointer;width:100%;border:1px solid var(--border-md);border-radius:var(--radius);outline:none';
+  dateInput.style.cssText = 'font-size:13px;padding:7px 10px;cursor:pointer;width:100%;border:1px solid var(--border-md);border-radius:var(--radius);outline:none;background:var(--bg-surface);color:var(--text);font-family:var(--font)';
   dateInput.onclick = function(){ this.showPicker&&this.showPicker(); };
-  const btnSave = document.createElement('button');
-  btnSave.textContent = 'Salvar';
-  btnSave.style.cssText = 'background:var(--brand);border:none;color:#fff;font-size:12px;font-weight:600;font-family:var(--font);padding:6px 14px;border-radius:var(--radius);cursor:pointer';
-  btnSave.onclick = function(){ saveEditActivity(dealId, actId); };
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:7px;justify-content:flex-end';
   const btnCancel = document.createElement('button');
   btnCancel.textContent = 'Cancelar';
   btnCancel.style.cssText = 'background:none;border:1px solid var(--border-md);color:var(--text-2);font-size:12px;font-weight:600;font-family:var(--font);padding:6px 14px;border-radius:var(--radius);cursor:pointer';
-  btnCancel.onclick = function(){ cancelEditActivity(this); };
-  const btnRow = document.createElement('div');
-  btnRow.style.cssText = 'display:flex;gap:7px';
-  btnRow.appendChild(btnSave);
+  btnCancel.onclick = function(){ pop.remove(); };
+  const btnSave = document.createElement('button');
+  btnSave.textContent = 'Salvar';
+  btnSave.style.cssText = 'background:var(--brand);border:none;color:#fff;font-size:12px;font-weight:600;font-family:var(--font);padding:6px 14px;border-radius:var(--radius);cursor:pointer';
+  btnSave.onclick = function(){ saveEditActivity(dealId, actId); pop.remove(); };
   btnRow.appendChild(btnCancel);
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'display:flex;flex-direction:column;gap:7px;width:100%';
-  wrap.appendChild(titleInput);
-  wrap.appendChild(dateInput);
-  wrap.appendChild(btnRow);
-  itemEl.innerHTML = '';
-  itemEl.appendChild(wrap);
+  btnRow.appendChild(btnSave);
+  pop.appendChild(titleInput);
+  pop.appendChild(dateInput);
+  pop.appendChild(btnRow);
+  document.body.appendChild(pop);
+  titleInput.focus();
+  // Fechar ao clicar fora
+  setTimeout(() => {
+    document.addEventListener('mousedown', function handler(e) {
+      if (!pop.contains(e.target) && e.target !== triggerBtn) {
+        pop.remove();
+        document.removeEventListener('mousedown', handler);
+      }
+    });
+  }, 10);
 }
 
 function cancelEditActivity(btn) {
-  const itemEl = btn.closest('[data-act-id]');
-  if (!itemEl) return;
-  const dealId = currentDealId;
-  const d = deals.find(x=>x.id===dealId);
-  if (d) renderDetail(d);
+  document.querySelectorAll('.act-edit-popover').forEach(el=>el.remove());
 }
 
 async function saveEditActivity(dealId, actId) {
