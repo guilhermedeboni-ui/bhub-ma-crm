@@ -291,9 +291,15 @@
     .acts-toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 14px 20px; border-bottom: 1px solid var(--border); }
     .acts-period-btn { background: none; border: 1px solid var(--border-md); color: var(--text-2); font-size: 12px; font-weight: 600; font-family: var(--font); padding: 5px 12px; border-radius: 20px; cursor: pointer; transition: .12s; }
     .acts-period-btn:hover, .acts-period-btn.active { background: var(--brand); color: #fff; border-color: var(--brand); }
-    .acts-table { width: 100%; border-collapse: collapse; }
+    .acts-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .acts-table th { font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .4px; padding: 10px 16px; text-align: left; border-bottom: 1px solid var(--border); }
-    .acts-table td { font-size: 13px; color: var(--text); padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .acts-table td { font-size: 13px; color: var(--text); padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .acts-table th:nth-child(1), .acts-table td:nth-child(1) { width: 40px; }
+    .acts-table th:nth-child(2), .acts-table td:nth-child(2) { width: auto; white-space: normal; }
+    .acts-table th:nth-child(3), .acts-table td:nth-child(3) { width: 160px; }
+    .acts-table th:nth-child(4), .acts-table td:nth-child(4) { width: 140px; }
+    .acts-table th:nth-child(5), .acts-table td:nth-child(5) { width: 110px; }
+    .acts-table th:nth-child(6), .acts-table td:nth-child(6) { width: 100px; }
     .acts-table tr:hover td { background: var(--bg-hover); cursor: pointer; }
     .acts-table tr.done td { opacity: .5; }
 
