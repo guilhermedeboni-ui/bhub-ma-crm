@@ -191,7 +191,8 @@
     .act-big-item:hover { background: var(--bg-hover); }
     .act-check { width: 18px; height: 18px; border-radius: 4px; border: 2px solid var(--border-md); cursor: pointer; flex-shrink: 0; margin-top: 1px; background: var(--bg-card); display: flex; align-items: center; justify-content: center; transition: .12s; }
     .act-check.done { background: var(--accent); border-color: var(--accent); }
-    .act-check i { font-size: 11px; color: #fff; }
+    .act-check i { font-size: 11px; color: #fff; opacity: 0; transition: opacity .12s; }
+    .act-check.done i { opacity: 1; }
     .act-deal-badge { font-size: 11px; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-border); padding: 2px 8px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
     .overdue { color: #EF4444 !important; font-weight: 600; }
 
@@ -242,7 +243,8 @@
     .info-item { background: var(--bg-surface); border-radius: var(--radius); padding: 10px 12px; border: 1px solid var(--border); cursor: pointer; transition: border-color .15s; }
     .info-item:hover { border-color: var(--accent); }
     .info-item.editing { padding: 6px 8px; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,71,87,.08); }
-    .inline-edit-input { font-family: var(--font); font-size: 14px; font-weight: 600; color: var(--text); background: none; border: none; outline: none; width: 100%; padding: 2px 0; }
+    .inline-edit-input { font-family: var(--font); font-size: 14px; font-weight: 600; color: var(--text); background: var(--bg-card); border: none; outline: none; width: 100%; padding: 2px 0; }
+    select.inline-edit-input { background: var(--bg-card); color: var(--text); border-radius: var(--radius); padding: 2px 4px; }
     .info-edit-hint { font-size: 10px; color: var(--text-3); margin-top: 2px; }
     .info-key { font-size: 11px; color: var(--text-3); font-weight: 600; margin-bottom: 3px; letter-spacing: .2px; text-transform: uppercase; }
     .info-val { font-size: 14px; color: var(--text); font-weight: 600; }
@@ -1431,7 +1433,7 @@ function renderDetail(d){
           <div onclick="inlineEditSelect(${JSON.stringify(d.id)},'origem_detail',getOpts('origens_detalhadas'),this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Origem detalhada</div><span class="info-val" style="font-size:12px;color:${d.origem_detail?'var(--text-2)':'var(--text-3)'}">${d.origem_detail||'—'}</span></div>
           <div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Estado</div><span onclick="inlineEditState(${JSON.stringify(d.id)},this.closest('div'))" class="info-val" style="cursor:pointer;font-size:12px;color:${d.state?'var(--text-2)':'var(--text-3)'}">${d.state||'—'}</span></div>
           <div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Município</div><span onclick="inlineEditCity(${JSON.stringify(d.id)},this.closest('div'))" class="info-val" style="cursor:pointer;font-size:12px;color:${d.city?'var(--text-2)':'var(--text-3)'}">${d.city||'—'}</span></div>
-          <div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Etapa</div><select style="font-size:12px;font-weight:600;border:none;background:none;color:var(--text-2);font-family:var(--font);cursor:pointer;padding:0;text-align:center" onchange="changeStage(${JSON.stringify(d.id)},this.value)">${STAGES.map(s=>`<option value="${s}" ${s===d.stage?'selected':''}>${s}</option>`).join('')}</select></div>
+          <div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Etapa</div><select style="font-size:12px;font-weight:600;border:none;background:var(--bg-card);color:var(--text-2);font-family:var(--font);cursor:pointer;padding:2px 4px;text-align:center;border-radius:var(--radius)" onchange="changeStage(${JSON.stringify(d.id)},this.value)">${STAGES.map(s=>`<option value="${s}" ${s===d.stage?'selected':''}>${s}</option>`).join('')}</select></div>
         </div>
       </div>
     </div>
