@@ -1259,7 +1259,7 @@ function renderKanban(){
         <div class="deal-footer">
           ${d.owner?`<div class="deal-owner-txt"><i class="ti ti-user" style="font-size:11px"></i>${d.owner}</div>`:'<div></div>'}
           ${next?(()=>{
-            const today=new Date().toISOString().slice(0,10);
+            const today=todayLocal();
             const isToday=next.date===today;
             const dotColor=od?'dot-red':isToday?'dot-green':'dot-gray';
             const txtStyle=od?'color:#EF4444;font-weight:600':isToday?'color:#22C55E;font-weight:600':'';
@@ -1290,7 +1290,7 @@ function setActsPeriod(period) {
 
 function filterByPeriod(acts, period) {
   const today = new Date(); today.setHours(0,0,0,0);
-  const todayStr = today.toISOString().slice(0,10);
+  const todayStr = todayLocal();
   const getMonday = (d) => { const day=d.getDay(); const diff=d.getDate()-day+(day===0?-6:1); return new Date(d.setDate(diff)); };
   const thisMonday = getMonday(new Date(today)); thisMonday.setHours(0,0,0,0);
   const thisSunday = new Date(thisMonday); thisSunday.setDate(thisMonday.getDate()+6);
@@ -1308,6 +1308,7 @@ function filterByPeriod(acts, period) {
   });
 }
 
+function todayLocal(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function renderAllActivities(){
   const list=document.getElementById('all-activities-list');
   if (!list) return;
@@ -1328,7 +1329,7 @@ function renderAllActivities(){
   }
   list.innerHTML=all.map(a=>{
     const od=!a.done&&isOverdue(a.date);
-    const today=new Date().toISOString().slice(0,10);
+    const today=todayLocal();
     const isToday=a.date===today;
     const statusColor = od?'#EF4444':isToday?'#22C55E':a.done?'#22C55E':'var(--text-3)';
     const statusText = a.done?'Concluída':od?'Vencida':isToday?'Hoje':'Pendente';
@@ -2079,7 +2080,7 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 
 function render() {
   renderKanban();
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayLocal();
   const myName = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
   const urgentActs = deals.reduce((s,d)=>s+d.activities.filter(a=>!a.done&&a.date&&a.date<=today&&(!a.owner||a.owner===myName)).length, 0);
   const b = document.getElementById('act-badge');
