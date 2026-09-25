@@ -2301,7 +2301,11 @@ async function inviteUser() {
     return;
   }
   // Salvar perfil com must_change_password
-  await sb.from('crm_profiles').upsert({ user_id: data.id, email, full_name: name, role, must_change_password: true }, { onConflict: 'user_id' });
+  const { error: profileError } = await sb.from('crm_profiles').insert({ user_id: data.id, email, full_name: name, role, must_change_password: true });
+  if (profileError) {
+    // fallback para upsert caso já exista
+    await sb.from('crm_profiles').update({ full_name: name, role, must_change_password: true }).eq('user_id', data.id);
+  }
   toast(`Usuário ${name} criado! Informe o e-mail e a senha temporária.`);
   document.getElementById('invite-name').value = '';
   document.getElementById('invite-email').value = '';
