@@ -2111,7 +2111,10 @@ function setView(v) {
   const titles = {pipeline:'Pipeline M&A', activities:'Atividades', users:'Usuários'};
   document.getElementById('page-title').textContent = titles[v]||'';
   if (v==='activities') renderAllActivities();
-  if (v==='users') loadUsersView();
+  if (v==='users') {
+    if (currentUserRole !== 'admin') { toast('Acesso restrito.','error'); setView('pipeline'); return; }
+    loadUsersView();
+  }
 }
 
 // ── ESCAPE FECHA MODAL ──
