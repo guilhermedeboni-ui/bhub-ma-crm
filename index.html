@@ -629,6 +629,14 @@
       <button class="modal-close" onclick="closeModal('modal-contact')"><i class="ti ti-x"></i></button>
     </div>
     <div class="modal-body">
+      <div id="contact-search-section" style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+        <label style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Buscar na biblioteca pelo e-mail</label>
+        <div style="display:flex;gap:8px">
+          <input id="contact-search-email" type="email" placeholder="email@empresa.com" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:8px 10px;flex:1;background:var(--bg-card);color:var(--text)" oninput="searchContactByEmail(this.value)"/>
+          <button onclick="searchContactByEmail(document.getElementById('contact-search-email').value)" class="btn-secondary" style="white-space:nowrap;font-size:12px">Buscar</button>
+        </div>
+        <div id="contact-search-result" style="margin-top:8px;font-size:12px;color:var(--text-3)"></div>
+      </div>
       <div class="form-grid">
         <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)">Dados da Pessoa</div>
         <div class="form-group full"><label>Nome da Pessoa *</label><input id="contact-name" placeholder="Ex: João Silva"/></div>
@@ -1384,9 +1392,10 @@ function renderAllActivities(){
 // ── DEAL DETAIL ──
 function openDeal(id){currentDealId=id;const d=deals.find(x=>x.id===id);if(!d)return;renderDetail(d);document.getElementById('modal-detail').classList.add('open');}
 
-function renderDetail(d){
+async function renderDetail(d){
   const c=STAGE_COLORS[d.stage];
-  const contacts = d.contacts || [];
+  const contactEmails = d.contacts || [];
+  const contacts = await loadContactsForDeal(contactEmails);
   const history = d.history || [];
 
   // Sort history: pinned first, then by date desc
@@ -1859,10 +1868,12 @@ async function renameOptInDeals(key, oldVal, newVal) {
 }
 
 // ── EXPAND CONTACT ──
-function expandContact(e, dealId, idx) {
+async function expandContact(e, dealId, idx) {
   e.stopPropagation();
   const d = deals.find(x=>x.id==dealId); if(!d) return;
-  const ct = (d.contacts||[])[idx]; if(!ct) return;
+  const email = (d.contacts||[])[idx]; if(!email) return;
+  const contacts = await loadContactsForDeal([email]);
+  const ct = contacts[0]; if(!ct) return;
   const mainScroll = document.querySelector('.deal-main-scroll');
   if (!mainScroll) return;
   // Remove any existing expanded contact
@@ -1921,21 +1932,38 @@ function initContactDragDrop(dealId) {
 let editingContactIdx = null;
 let contactDealId = null;
 
-function openAddContact(dealId) {
-  contactDealId = dealId;
-  editingContactIdx = null;
-  document.getElementById('modal-contact-title').textContent = 'Adicionar contato';
-  ['contact-name','contact-role','contact-company','contact-email','contact-phone','contact-linkedin','contact-website'].forEach(id => document.getElementById(id).value = '');
-  populateContactSegmentSelect('');
-  document.getElementById('modal-contact').classList.add('open');
+
+// ── CONTACT LIBRARY ──
+let contactsCache = {}; // email -> contact object
+
+async function loadContactsForDeal(emails) {
+  if (!emails || !emails.length) return [];
+  const missing = emails.filter(e => e && !contactsCache[e]);
+  if (missing.length) {
+    const { data } = await sb.from('contacts').select('*').in('email', missing);
+    (data||[]).forEach(ct => { contactsCache[ct.email] = ct; });
+  }
+  return emails.map(e => contactsCache[e]).filter(Boolean);
 }
 
-function openEditContact(dealId, idx) {
-  const d = deals.find(x=>x.id===dealId); if(!d)return;
-  const ct = (d.contacts||[])[idx]; if(!ct)return;
-  contactDealId = dealId;
-  editingContactIdx = idx;
-  document.getElementById('modal-contact-title').textContent = 'Editar contato';
+async function saveContactToLibrary(ct) {
+  const { data, error } = await sb.from('contacts').upsert({
+    email: ct.email,
+    name: ct.name,
+    role: ct.role,
+    company: ct.company,
+    segment: ct.segment,
+    phone: ct.phone,
+    linkedin: ct.linkedin,
+    website: ct.website,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'email' }).select().single();
+  if (error) { toast('Erro ao salvar contato: '+error.message,'error'); return null; }
+  contactsCache[data.email] = data;
+  return data;
+}
+
+function fillContactForm(ct) {
   document.getElementById('contact-name').value = ct.name||'';
   document.getElementById('contact-role').value = ct.role||'';
   document.getElementById('contact-email').value = ct.email||'';
@@ -1944,28 +1972,69 @@ function openEditContact(dealId, idx) {
   document.getElementById('contact-linkedin').value = ct.linkedin||'';
   document.getElementById('contact-website').value = ct.website||'';
   populateContactSegmentSelect(ct.segment||'');
+}
+
+async function searchContactByEmail(email) {
+  const resultEl = document.getElementById('contact-search-result');
+  if (!email || !email.includes('@')) { resultEl.innerHTML = ''; return; }
+  const { data } = await sb.from('contacts').select('*').eq('email', email.toLowerCase().trim()).single();
+  if (data) {
+    resultEl.innerHTML = `<div style="background:var(--bg-success);color:var(--text-success);padding:6px 10px;border-radius:var(--radius);display:flex;align-items:center;justify-content:space-between"><span><i class="ti ti-check" style="margin-right:4px"></i>Encontrado: <strong>${data.name}</strong> — ${data.company||'sem empresa'}</span><button onclick="fillContactForm(${JSON.stringify(data).replace(/'/g,'&#39;')});document.getElementById('contact-search-result').innerHTML='<span style=\'color:var(--text-success)\'>✓ Dados preenchidos</span>'" style="background:none;border:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--text-success);font-family:var(--font)">Usar este</button></div>`;
+  } else {
+    resultEl.innerHTML = `<span style="color:var(--text-3)">Nenhum contato encontrado. Preencha os dados abaixo para criar.</span>`;
+  }
+}
+
+function openAddContact(dealId) {
+  contactDealId = dealId;
+  editingContactIdx = null;
+  document.getElementById('modal-contact-title').textContent = 'Adicionar contato';
+  document.getElementById('contact-search-section').style.display = '';
+  document.getElementById('contact-search-email').value = '';
+  document.getElementById('contact-search-result').innerHTML = '';
+  ['contact-name','contact-role','contact-company','contact-email','contact-phone','contact-linkedin','contact-website'].forEach(id => document.getElementById(id).value = '');
+  populateContactSegmentSelect('');
+  document.getElementById('modal-contact').classList.add('open');
+}
+
+async function openEditContact(dealId, idx) {
+  const d = deals.find(x=>x.id===dealId); if(!d)return;
+  const email = (d.contacts||[])[idx];
+  if(!email)return;
+  const ct = contactsCache[email] || (await loadContactsForDeal([email]))[0];
+  if(!ct)return;
+  contactDealId = dealId;
+  editingContactIdx = idx;
+  document.getElementById('modal-contact-title').textContent = 'Editar contato';
+  document.getElementById('contact-search-section').style.display = 'none';
+  fillContactForm(ct);
   document.getElementById('modal-contact').classList.add('open');
 }
 
 async function saveContact() {
   const name = document.getElementById('contact-name').value.trim();
+  const email = document.getElementById('contact-email').value.trim().toLowerCase();
   if (!name) { toast('Informe o nome do contato.','error'); return; }
-  const d = deals.find(x=>x.id===contactDealId); if(!d)return;
-  if (!d.contacts) d.contacts = [];
+  if (!email) { toast('Informe o e-mail do contato.','error'); return; }
   const ct = {
+    email,
     name,
     role: document.getElementById('contact-role').value.trim(),
     company: document.getElementById('contact-company').value.trim(),
     segment: document.getElementById('contact-segment')?.value||'',
-    email: document.getElementById('contact-email').value.trim(),
     linkedin: document.getElementById('contact-linkedin').value.trim(),
     website: document.getElementById('contact-website').value.trim(),
     phone: document.getElementById('contact-phone').value.trim(),
   };
+  // Salvar/atualizar na biblioteca global
+  const saved = await saveContactToLibrary(ct);
+  if (!saved) return;
+  const d = deals.find(x=>x.id===contactDealId); if(!d)return;
+  if (!d.contacts) d.contacts = [];
   if (editingContactIdx !== null) {
-    d.contacts[editingContactIdx] = ct;
+    d.contacts[editingContactIdx] = email;
   } else {
-    d.contacts.push(ct);
+    if (!d.contacts.includes(email)) d.contacts.push(email);
   }
   const ok = await saveDeal(d); if(!ok)return;
   toast(editingContactIdx !== null ? 'Contato atualizado!' : 'Contato adicionado!');
@@ -1974,11 +2043,11 @@ async function saveContact() {
 }
 
 async function deleteContact(dealId, idx) {
-  if (!confirm('Excluir este contato?')) return;
+  if (!confirm('Remover este contato do deal?')) return;
   const d = deals.find(x=>x.id===dealId); if(!d)return;
   d.contacts.splice(idx, 1);
   const ok = await saveDeal(d); if(!ok)return;
-  toast('Contato excluído');
+  toast('Contato removido do deal');
   renderDetail(d);
 }
 
