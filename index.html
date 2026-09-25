@@ -506,14 +506,15 @@
             </div>
           </div>
           <div class="invite-form">
-            <h3><i class="ti ti-user-plus" style="font-size:14px;margin-right:6px"></i>Convidar novo usuário</h3>
+            <h3><i class="ti ti-user-plus" style="font-size:14px;margin-right:6px"></i>Criar novo usuário</h3>
             <div class="invite-grid">
               <div><label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">NOME</label><input id="invite-name" placeholder="Nome completo" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:8px 10px;width:100%;background:var(--bg-card);color:var(--text)"/></div>
-              <div><label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">E-MAIL</label><input id="invite-email" type="email" placeholder="email@bhub.com.br" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:8px 10px;width:100%;background:var(--bg-card);color:var(--text)"/></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">E-MAIL</label><input id="invite-email" type="email" placeholder="email@bhub.ai" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:8px 10px;width:100%;background:var(--bg-card);color:var(--text)"/></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">SENHA TEMPORÁRIA</label><input id="invite-password" type="text" placeholder="Mínimo 8 caracteres" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:8px 10px;width:100%;background:var(--bg-card);color:var(--text)"/></div>
               <div><label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">PERFIL</label><select id="invite-role" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:8px 10px;width:100%;background:var(--bg-card);color:var(--text)"><option value="editor">Editor</option><option value="viewer">Viewer</option><option value="admin">Admin</option></select></div>
-              <div><button class="btn-primary" onclick="inviteUser()" style="white-space:nowrap;height:36px"><i class="ti ti-send" style="font-size:13px"></i> Convidar</button></div>
+              <div><button class="btn-primary" onclick="inviteUser()" style="white-space:nowrap;height:36px"><i class="ti ti-user-check" style="font-size:13px"></i> Criar usuário</button></div>
             </div>
-            <p style="font-size:11px;color:var(--text-3);margin-top:10px"><i class="ti ti-info-circle" style="font-size:12px"></i> O usuário receberá um e-mail para definir sua senha.</p>
+            <p style="font-size:11px;color:var(--text-3);margin-top:10px"><i class="ti ti-info-circle" style="font-size:12px"></i> O usuário será criado imediatamente. Informe o e-mail e a senha temporária manualmente — o usuário será obrigado a trocar a senha no primeiro acesso.</p>
           </div>
           <div class="users-table">
             <div class="users-table-header">
@@ -573,6 +574,27 @@
 </div>
 
 <!-- MODAL FUNIL -->
+<div class="modal-overlay" id="modal-change-password" style="z-index:1500;display:flex">
+  <div class="modal-box" style="max-width:400px;width:100%">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="width:48px;height:48px;background:var(--accent-soft);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><i class="ti ti-lock" style="font-size:22px;color:var(--accent)"></i></div>
+      <h2 style="font-size:18px;font-weight:700;color:var(--text)">Troque sua senha</h2>
+      <p style="font-size:13px;color:var(--text-3);margin-top:6px">Este é seu primeiro acesso. Defina uma senha pessoal para continuar.</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">NOVA SENHA</label>
+        <input id="new-password-inp" type="password" placeholder="Mínimo 8 caracteres" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:9px 12px;width:100%;background:var(--bg-card);color:var(--text)"/>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">CONFIRMAR SENHA</label>
+        <input id="confirm-password-inp" type="password" placeholder="Repita a nova senha" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:9px 12px;width:100%;background:var(--bg-card);color:var(--text)"/>
+      </div>
+      <button class="btn-primary" onclick="submitChangePassword()" style="width:100%;margin-top:4px">Salvar nova senha</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-funil">
   <div class="modal" style="max-width:480px">
     <div class="modal-head">
@@ -710,7 +732,17 @@
 
 <script>
 const { createClient } = supabase;
-const sb = createClient('https://yrpjmcixnfichiciafgw.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlycGptY2l4bmZpY2hpY2lhZmd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MTYzOTQsImV4cCI6MjA5NzI5MjM5NH0.my1p2SjsVcmA6lj4GuD3RqkCy3YVYYFfcDZoSJxqKPA');
+const sb = createClient('https://yrpjmcixnfichiciafgw.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlycGptY2l4bmZpY2hpY2lhZmd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MTYzOTQsImV4cCI6MjA5NzI5MjM5NH0.my1p2SjsVcmag1j4GuD3RqkCy3YVYYFfcDZoSJxqKPA');
+const SUPABASE_URL = 'https://yrpjmcixnfichiciafgw.supabase.co';
+const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlycGptY2l4bmZpY2hpY2lhZmd3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTcxNjM5NCwiZXhwIjoyMDk3MjkyMzk0fQ.hS5luAn1aiLxcSAXqo6dibHXqiiT97zmIHUBWw5TR6Y';
+async function adminCreateUser(email, password, fullName) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY },
+    body: JSON.stringify({ email, password, email_confirm: true, user_metadata: { full_name: fullName } })
+  });
+  return res.json();
+}
 
 // ── FUNIS ──
 const DEFAULT_STAGES = ['Prospecção','Reunião','NDA','Análise de Viabilidade','Proposta','Diligência','Contrato','Ganho','Perdido'];
@@ -2178,14 +2210,34 @@ async function showApp() {
 }
 
 
+// ── TROCA DE SENHA OBRIGATÓRIA ──
+async function submitChangePassword() {
+  const newPass = document.getElementById('new-password-inp').value;
+  const confirmPass = document.getElementById('confirm-password-inp').value;
+  if (!newPass || newPass.length < 8) { toast('Senha deve ter no mínimo 8 caracteres.','error'); return; }
+  if (newPass !== confirmPass) { toast('As senhas não coincidem.','error'); return; }
+  const { error } = await sb.auth.updateUser({ password: newPass });
+  if (error) { toast('Erro ao salvar senha: '+error.message,'error'); return; }
+  // Remover flag must_change_password
+  await sb.from('crm_profiles').update({ must_change_password: false }).eq('user_id', currentUser.id);
+  document.getElementById('modal-change-password').classList.remove('open');
+  toast('Senha atualizada com sucesso!');
+  applyRoleRestrictions();
+}
+
 // ── USER MANAGEMENT ──
 let currentUserRole = 'editor';
 let profilesCache = [];
 
 async function loadCurrentUserRole() {
   try {
-    const { data } = await sb.from('crm_profiles').select('role').eq('user_id', currentUser.id).single();
+    const { data } = await sb.from('crm_profiles').select('role, must_change_password').eq('user_id', currentUser.id).single();
     currentUserRole = data?.role || 'editor';
+    if (data?.must_change_password) {
+      // Bloquear UI e mostrar modal de troca de senha
+      document.getElementById('modal-change-password').classList.add('open');
+      return;
+    }
   } catch(e) { currentUserRole = 'editor'; }
   applyRoleRestrictions();
 }
@@ -2233,13 +2285,27 @@ async function loadUsersView() {
 async function inviteUser() {
   const name = document.getElementById('invite-name').value.trim();
   const email = document.getElementById('invite-email').value.trim().toLowerCase();
+  const password = document.getElementById('invite-password').value.trim();
   const role = document.getElementById('invite-role').value;
   if (!email) { toast('Informe o e-mail.','error'); return; }
-  const { error } = await sb.from('crm_profiles').upsert({ email, full_name: name||email, role, pending: true }, { onConflict: 'email' });
-  if (error) { toast('Erro: '+error.message,'error'); return; }
-  toast(`${email} adicionado!`);
+  if (!password || password.length < 8) { toast('Senha deve ter no mínimo 8 caracteres.','error'); return; }
+  if (!name) { toast('Informe o nome.','error'); return; }
+  const btn = document.querySelector('[onclick="inviteUser()"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Criando...'; }
+  // Criar usuário via Admin API
+  const data = await adminCreateUser(email, password, name);
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-user-check" style="font-size:13px"></i> Criar usuário'; }
+  if (data.error || !data.id) {
+    const msg = data.error?.message || data.msg || 'Erro ao criar usuário.';
+    toast(msg.includes('already') ? 'E-mail já cadastrado.' : msg, 'error');
+    return;
+  }
+  // Salvar perfil com must_change_password
+  await sb.from('crm_profiles').upsert({ user_id: data.id, email, full_name: name, role, must_change_password: true }, { onConflict: 'user_id' });
+  toast(`Usuário ${name} criado! Informe o e-mail e a senha temporária.`);
   document.getElementById('invite-name').value = '';
   document.getElementById('invite-email').value = '';
+  document.getElementById('invite-password').value = '';
   loadUsersView();
 }
 
