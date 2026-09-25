@@ -1390,12 +1390,10 @@ function renderAllActivities(){
 }
 
 // ── DEAL DETAIL ──
-async function openDeal(id){currentDealId=id;const d=deals.find(x=>x.id===id);if(!d)return;await renderDetail(d);document.getElementById('modal-detail').classList.add('open');}
+function openDeal(id){currentDealId=id;const d=deals.find(x=>x.id===id);if(!d)return;renderDetail(d);document.getElementById('modal-detail').classList.add('open');}
 
-async function renderDetail(d){
+function renderDetail(d){
   const c=STAGE_COLORS[d.stage];
-  const contactEmails = d.contacts || [];
-  const contacts = await loadContactsForDeal(contactEmails);
   const history = d.history || [];
 
   // Sort history: pinned first, then by date desc
@@ -1446,19 +1444,7 @@ async function renderDetail(d){
     </div>`;
   }).join('') || '<p style="font-size:13px;color:var(--text-3)">Nenhuma atividade pendente.</p>';
 
-  const contactsHtml = contacts.length ? contacts.map((ct,i)=>`
-    <div class="contact-card" draggable="true" data-contact-idx="${i}" style="padding:8px 10px;cursor:pointer" onclick="expandContact(event,${JSON.stringify(d.id)},${i})">
-      <div class="contact-actions">
-        <button class="btn-icon-sm" onclick="expandContact(event,${JSON.stringify(d.id)},${i})" title="Expandir"><i class="ti ti-arrows-maximize"></i></button>
-        <button class="btn-icon-sm" onclick="openEditContact(${JSON.stringify(d.id)},${i})" title="Editar"><i class="ti ti-pencil"></i></button>
-        <button class="btn-icon-sm" onclick="deleteContact(${JSON.stringify(d.id)},${i})" title="Excluir"><i class="ti ti-trash"></i></button>
-      </div>
-      <i class="ti ti-grip-horizontal contact-grip"></i>
-      <div class="contact-name" style="font-size:13px">${ct.name}</div>
-      ${ct.company?`<div style="font-size:12px;font-weight:600;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ct.company}</div>`:''}
-      ${ct.role?`<div class="contact-role" style="font-size:11px">${ct.role}</div>`:''}
-      ${ct.segment?`<div style="font-size:11px;color:var(--text-3)">${ct.segment}</div>`:''}
-    </div>`).join('') : '<p style="font-size:13px;color:var(--text-3);margin-bottom:8px">Nenhum contato cadastrado.</p>';
+  const contactsHtml = '<p style="font-size:13px;color:var(--text-3);margin-bottom:8px">Carregando...</p>';
 
   const _currentUserName = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
   const _dealId = d.id;
@@ -1547,16 +1533,16 @@ async function renderDetail(d){
       </div>
     </div>`;
   // Init contact drag and drop after DOM is ready
-  setTimeout(() => initContactDragDrop(d.id), 50);
+  setTimeout(() => { initContactDragDrop(d.id); renderContactsSection(d); }, 50);
 }
-async function changeStage(id,stage){const d=deals.find(x=>x.id===id);if(!d)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Etapa alterada para "'+stage+'"'});d.stage=stage;const ok=await saveDeal(d);if(!ok)return;toast('Etapa atualizada');await renderDetail(d);render();}
+async function changeStage(id,stage){const d=deals.find(x=>x.id===id);if(!d)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Etapa alterada para "'+stage+'"'});d.stage=stage;const ok=await saveDeal(d);if(!ok)return;toast('Etapa atualizada');renderDetail(d);render();}
 async function addHistory(dealId){
   const d=deals.find(x=>x.id===dealId);if(!d)return;
   const text=document.getElementById('hist-text-inp').value.trim();if(!text)return;
   const author=currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
   d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text,author});
   const ok=await saveDeal(d);if(!ok)return;
-  toast('Interação registrada');await renderDetail(d);render();
+  toast('Interação registrada');renderDetail(d);render();
 }
 async function addActivity(dealId){
   const d=deals.find(x=>x.id===dealId);if(!d)return;
@@ -1566,7 +1552,7 @@ async function addActivity(dealId){
   const owner=ownerEl?ownerEl.value:'';
   d.activities.unshift({id:Date.now(),title,date,done:false,owner});
   const ok=await saveDeal(d);if(!ok)return;
-  toast('Atividade adicionada');await renderDetail(d);render();
+  toast('Atividade adicionada');renderDetail(d);render();
 }
 async function toggleAct(dealId,actId){
   const d=deals.find(x=>x.id===dealId);if(!d)return;
@@ -1582,7 +1568,7 @@ async function toggleAct(dealId,actId){
     // Reabrindo
     a.done=false;
   }
-  await renderDetail(d);render();
+  renderDetail(d);render();
   const actView=document.getElementById('view-activities');
   if(actView&&actView.style.display!=='none'){
     const showDone=document.getElementById('show-done-acts')?.checked;
@@ -1654,7 +1640,7 @@ function editSharepointLink(dealId, triggerEl) {
     const url = inp.value.trim();
     d.sharepoint_url = url || null;
     const ok = await saveDeal(d);
-    if (ok) { toast('Link salvo!'); await renderDetail(d); }
+    if (ok) { toast('Link salvo!'); renderDetail(d); }
     pop.remove();
   });
   inp.addEventListener('keydown', e => { if(e.key==='Enter') pop.querySelector('#sharepoint-save-btn').click(); });
@@ -1672,7 +1658,7 @@ async function deleteActivity(dealId, actId) {
   d.activities = d.activities.filter(a => a.id !== actId);
   const ok = await saveDeal(d); if(!ok)return;
   toast('Atividade excluída');
-  await renderDetail(d); render();
+  renderDetail(d); render();
 }
 
 // ── DELETE HISTORY ──
@@ -1682,7 +1668,7 @@ async function deleteHistory(dealId, idx) {
   d.history.splice(idx, 1);
   const ok = await saveDeal(d); if(!ok)return;
   toast('Registro excluído');
-  await renderDetail(d); render();
+  renderDetail(d); render();
 }
 
 // ── EDIT ACTIVITY ──
@@ -1754,7 +1740,7 @@ async function saveEditActivity(dealId, actId) {
   a.date = dateEl.value || a.date;
   const ok = await saveDeal(d); if(!ok)return;
   toast('Atividade atualizada');
-  await renderDetail(d); render();
+  renderDetail(d); render();
 }
 
 async function confirmDeleteDeal(id) {
@@ -1923,7 +1909,7 @@ function initContactDragDrop(dealId) {
       const [moved] = d.contacts.splice(dragIdx, 1);
       d.contacts.splice(toIdx, 0, moved);
       await saveDeal(d);
-      await renderDetail(d);
+      renderDetail(d);
     });
   });
 }
@@ -1933,7 +1919,37 @@ let editingContactIdx = null;
 let contactDealId = null;
 
 
-// ── CONTACT LIBRARY ──
+// ── RENDER CONTACTS SECTION ──
+async function renderContactsSection(d) {
+  const listEl = document.getElementById('contacts-list-'+d.id);
+  if (!listEl) return;
+  const contactEmails = d.contacts || [];
+  if (!contactEmails.length) {
+    listEl.innerHTML = '<p style="font-size:13px;color:var(--text-3);margin-bottom:8px">Nenhum contato cadastrado.</p>';
+    return;
+  }
+  const contacts = await loadContactsForDeal(contactEmails);
+  if (!contacts.length) {
+    listEl.innerHTML = '<p style="font-size:13px;color:var(--text-3);margin-bottom:8px">Nenhum contato cadastrado.</p>';
+    return;
+  }
+  listEl.innerHTML = contacts.map((ct,i)=>`
+    <div class="contact-card" draggable="true" data-contact-idx="${i}" style="padding:8px 10px;cursor:pointer" onclick="expandContact(event,${JSON.stringify(d.id)},${i})">
+      <div class="contact-actions">
+        <button class="btn-icon-sm" onclick="expandContact(event,${JSON.stringify(d.id)},${i})" title="Expandir"><i class="ti ti-arrows-maximize"></i></button>
+        <button class="btn-icon-sm" onclick="openEditContact(${JSON.stringify(d.id)},${i})" title="Editar"><i class="ti ti-pencil"></i></button>
+        <button class="btn-icon-sm" onclick="deleteContact(${JSON.stringify(d.id)},${i})" title="Excluir"><i class="ti ti-trash"></i></button>
+      </div>
+      <i class="ti ti-grip-horizontal contact-grip"></i>
+      <div class="contact-name" style="font-size:13px">${ct.name}</div>
+      ${ct.company?`<div style="font-size:12px;font-weight:600;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ct.company}</div>`:''}
+      ${ct.role?`<div class="contact-role" style="font-size:11px">${ct.role}</div>`:''}
+      ${ct.segment?`<div style="font-size:11px;color:var(--text-3)">${ct.segment}</div>`:''}
+    </div>`).join('');
+  initContactDragDrop(d.id);
+}
+
+
 let contactsCache = {}; // email -> contact object
 
 async function loadContactsForDeal(emails) {
@@ -2040,7 +2056,7 @@ async function saveContact() {
   const ok = await saveDeal(d); if(!ok)return;
   toast(editingContactIdx !== null ? 'Contato atualizado!' : 'Contato adicionado!');
   closeModal('modal-contact');
-  await renderDetail(d);
+  renderDetail(d);
 }
 
 async function deleteContact(dealId, idx) {
@@ -2049,7 +2065,7 @@ async function deleteContact(dealId, idx) {
   d.contacts.splice(idx, 1);
   const ok = await saveDeal(d); if(!ok)return;
   toast('Contato removido do deal');
-  await renderDetail(d);
+  renderDetail(d);
 }
 
 // ── PIN HISTORY ──
@@ -2058,7 +2074,7 @@ async function togglePinHistory(dealId, origIdx) {
   const h = d.history[origIdx]; if(!h)return;
   h.pinned = !h.pinned;
   const ok = await saveDeal(d); if(!ok)return;
-  await renderDetail(d);
+  renderDetail(d);
 }
 
 // ── ACTIVITY COMMENT ──
@@ -2117,7 +2133,7 @@ async function saveActivityComment(dealId, actId) {
   a.commentBy = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
   const ok = await saveDeal(d); if(!ok)return;
   toast('Comentário salvo!');
-  await renderDetail(d);
+  renderDetail(d);
 }
 
 // ── FUNIL DELETE + REORDER ──
@@ -2467,7 +2483,7 @@ function inlineEditText(dealId, field, el) {
   const valEl = el.querySelector('.info-val') || el;
   valEl.innerHTML = `<input class="inline-edit-input" value="${d[field]||''}" placeholder="${field}"/>`;
   const inp = valEl.querySelector('input'); inp.focus(); inp.select();
-  const save = async () => { d[field]=inp.value.trim(); el.classList.remove('editing'); await renderDetail(d); await saveDeal(d); };
+  const save = async () => { d[field]=inp.value.trim(); el.classList.remove('editing'); renderDetail(d); await saveDeal(d); };
   inp.addEventListener('blur', save);
   inp.addEventListener('keydown', e => { if(e.key==='Enter') inp.blur(); if(e.key==='Escape'){el.classList.remove('editing');renderDetail(d);} });
 }
@@ -2478,7 +2494,7 @@ function inlineEditMrr(dealId, el) {
   const d = deals.find(x=>x.id===dealId); if(!d) return;
   el.innerHTML = `<input class="inline-edit-input" type="number" value="${d.mrr||''}" placeholder="MRR em R$" style="font-size:18px;color:var(--accent);font-weight:700"/>`;
   const inp = el.querySelector('input'); inp.focus(); inp.select();
-  const save = async () => { d.mrr=parseFloat(inp.value)||0; el.classList.remove('editing'); await renderDetail(d); await saveDeal(d); };
+  const save = async () => { d.mrr=parseFloat(inp.value)||0; el.classList.remove('editing'); renderDetail(d); await saveDeal(d); };
   inp.addEventListener('blur', save);
   inp.addEventListener('keydown', e => { if(e.key==='Enter') inp.blur(); if(e.key==='Escape'){el.classList.remove('editing');renderDetail(d);} });
 }
@@ -2490,7 +2506,7 @@ function inlineEditOwner(dealId, el) {
   const valEl = el.querySelector('.info-val');
   valEl.innerHTML = `<select class="inline-edit-input"><option value="">—</option>${crmUsers.map(u=>`<option value="${u}" ${u===d.owner?'selected':''}>${u}</option>`).join('')}</select>`;
   const sel = valEl.querySelector('select'); sel.focus();
-  const save = async () => { d.owner=sel.value; el.classList.remove('editing'); await renderDetail(d); await saveDeal(d); };
+  const save = async () => { d.owner=sel.value; el.classList.remove('editing'); renderDetail(d); await saveDeal(d); };
   sel.addEventListener('blur', save); sel.addEventListener('change', save);
 }
 
@@ -2501,7 +2517,7 @@ function inlineEditSelect(dealId, field, opts, el) {
   const valEl = el.querySelector('.info-val');
   valEl.innerHTML = `<select class="inline-edit-input"><option value="">—</option>${opts.map(o=>`<option value="${o}" ${o===d[field]?'selected':''}>${o}</option>`).join('')}</select>`;
   const sel = valEl.querySelector('select'); sel.focus();
-  const save = async () => { d[field]=sel.value; el.classList.remove('editing'); await renderDetail(d); await saveDeal(d); };
+  const save = async () => { d[field]=sel.value; el.classList.remove('editing'); renderDetail(d); await saveDeal(d); };
   sel.addEventListener('blur', save); sel.addEventListener('change', save);
 }
 
@@ -2512,7 +2528,7 @@ function inlineEditState(dealId, el) {
   const valEl = el.querySelector('.info-val');
   valEl.innerHTML = `<select class="inline-edit-input"><option value="">—</option>${UFS.map(uf=>`<option value="${uf}" ${uf===d.state?'selected':''}>${uf}</option>`).join('')}</select>`;
   const sel = valEl.querySelector('select'); sel.focus();
-  sel.addEventListener('change', async () => { d.state=sel.value; d.city=''; el.classList.remove('editing'); await renderDetail(d); await saveDeal(d); });
+  sel.addEventListener('change', async () => { d.state=sel.value; d.city=''; el.classList.remove('editing'); renderDetail(d); await saveDeal(d); });
   sel.addEventListener('blur', () => { el.classList.remove('editing'); renderDetail(d); });
 }
 
@@ -2530,7 +2546,7 @@ async function inlineEditCity(dealId, el) {
     sel.innerHTML = `<option value="">—</option>${data.map(c=>`<option value="${c.nome}" ${c.nome===d.city?'selected':''}>${c.nome}</option>`).join('')}`;
     sel.focus();
   } catch(e) { sel.innerHTML='<option>Erro</option>'; }
-  const save = async () => { d.city=sel.value; el.classList.remove('editing'); await renderDetail(d); await saveDeal(d); };
+  const save = async () => { d.city=sel.value; el.classList.remove('editing'); renderDetail(d); await saveDeal(d); };
   sel.addEventListener('blur', save); sel.addEventListener('change', save);
 }
 
@@ -2550,7 +2566,6 @@ async function inlineEditCity(dealId, el) {
   });
 })();
 
-  
 init();
 </script>
 </body>
