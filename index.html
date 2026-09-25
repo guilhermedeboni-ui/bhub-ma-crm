@@ -1938,12 +1938,26 @@ let contactsCache = {}; // email -> contact object
 
 async function loadContactsForDeal(emails) {
   if (!emails || !emails.length) return [];
-  const missing = emails.filter(e => e && !contactsCache[e]);
+  // Filtrar apenas emails válidos (contém @)
+  const validEmails = emails.filter(e => e && typeof e === 'string' && e.includes('@'));
+  const invalidEmails = emails.filter(e => !e || typeof e !== 'string' || !e.includes('@'));
+  const missing = validEmails.filter(e => !contactsCache[e]);
   if (missing.length) {
     const { data } = await sb.from('contacts').select('*').in('email', missing);
     (data||[]).forEach(ct => { contactsCache[ct.email] = ct; });
   }
-  return emails.map(e => contactsCache[e]).filter(Boolean);
+  // Para emails inválidos, buscar por nome aproximado na cache ou retornar placeholder
+  const results = validEmails.map(e => contactsCache[e]).filter(Boolean);
+  // Incluir contatos com identificadores não-email (buscar por id ou prefixo)
+  for (const inv of invalidEmails) {
+    if (!inv) continue;
+    if (!contactsCache[inv]) {
+      const { data } = await sb.from('contacts').select('*').or(`email.eq.${inv},email.like.sem-email-%`).limit(1);
+      if (data && data[0]) contactsCache[inv] = data[0];
+    }
+    if (contactsCache[inv]) results.push(contactsCache[inv]);
+  }
+  return results;
 }
 
 async function saveContactToLibrary(ct) {
