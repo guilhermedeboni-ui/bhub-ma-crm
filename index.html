@@ -137,6 +137,12 @@
     .valuation-kanban::-webkit-scrollbar { height: 6px; }
     .valuation-kanban::-webkit-scrollbar-track { background: var(--bg-surface); border-radius: 3px; }
     .valuation-kanban::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 3px; }
+    .val-lane-body.val-drag-over { background: rgba(55,138,221,.08); }
+    .val-lane { min-width: 220px; width: 220px; flex-shrink: 0; display: flex; flex-direction: column; border-radius: 12px; background: var(--bg-surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+    .val-lane-head { padding: 12px; border-radius: 12px 12px 0 0; }
+    .val-lane-body { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 6px; min-height: calc(100vh - 280px); }
+    .val-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; cursor: pointer; transition: box-shadow .15s; }
+    .val-card:hover { box-shadow: var(--shadow-md); }
 
     /* ── TOOLBAR ── */
     .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
@@ -508,11 +514,20 @@
 
       <!-- USERS VIEW -->
       <div id="view-valuation" class="view-valuation-wrap" style="display:none">
-        <div style="margin-bottom:16px">
-          <div style="font-size:18px;font-weight:700;color:var(--text)">Análise de Negócio</div>
-          <div style="font-size:13px;color:var(--text-3);margin-top:2px">Deals em análise pelo time de negócio</div>
+        <div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:18px;font-weight:700;color:var(--text)">Análise de Negócio</div>
+            <div style="font-size:13px;color:var(--text-3);margin-top:2px">Deals em análise pelo time de negócio</div>
+          </div>
         </div>
         <div id="valuation-kanban" class="valuation-kanban"></div>
+      </div>
+
+      <!-- MODAL VALUATION DEAL -->
+      <div class="modal-overlay fullscreen" id="modal-valuation-deal" style="display:none;z-index:900">
+        <div style="width:100%;max-width:680px;background:var(--bg-card);border-radius:var(--radius-lg);box-shadow:0 8px 40px rgba(0,0,0,.18);overflow:hidden;margin:auto">
+          <div id="valuation-modal-content"></div>
+        </div>
       </div>
 
       <div id="view-users" style="display:none">
@@ -1280,7 +1295,7 @@ function renderKanban(){
     kb.appendChild(lane);
     const body=lane.querySelector('.lane-body');
     // Drop aceito tanto no body quanto no lane inteiro (header excluído)
-    const dropHandler = async e=>{e.preventDefault();body.classList.remove('drag-over');lane.classList.remove('drag-over');if(window.valuationDragId)return;if(!draggedDealId)return;const d=deals.find(x=>x.id===draggedDealId);if(!d||d.stage===stage)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Etapa alterada para "'+stage+'".'});d.stage=stage;saveDeal(d);toast('Etapa atualizada');render();};
+    const dropHandler = async e=>{e.preventDefault();body.classList.remove('drag-over');lane.classList.remove('drag-over');if(!draggedDealId)return;const d=deals.find(x=>x.id===draggedDealId);if(!d||d.stage===stage)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Etapa alterada para "'+stage+'".'});d.stage=stage;saveDeal(d);toast('Etapa atualizada');render();};
     const overHandler = e=>{e.preventDefault();body.classList.add('drag-over');};
     const leaveHandler = e=>{if(!lane.contains(e.relatedTarget)){body.classList.remove('drag-over');}};
     body.addEventListener('dragover', overHandler);
@@ -1562,7 +1577,7 @@ function renderDetail(d){
   // Init contact drag and drop after DOM is ready
   setTimeout(() => initContactDragDrop(d.id), 50);
 }
-async function changeStage(id,stage){const d=deals.find(x=>x.id===id);if(!d)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Etapa alterada para "'+stage+'"'});d.stage=stage;const ok=await saveDeal(d);if(!ok)return;toast('Etapa atualizada');renderDetail(d);render();}
+async function changeStage(id,stage){const d=deals.find(x=>x.id===id);if(!d)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Etapa alterada para "'+stage+'"'});d.stage=stage;const ok=await saveDeal(d);if(!ok)return;toast('Etapa atualizada');renderDetail(d);render();if(VALUATION_TRIGGER_STAGES.includes(stage)){syncValuationDeal(d).then(()=>{if(document.getElementById('view-valuation').style.display!=='none')renderValuation();});} }
 async function addHistory(dealId){
   const d=deals.find(x=>x.id===dealId);if(!d)return;
   const text=document.getElementById('hist-text-inp').value.trim();if(!text)return;
@@ -2237,6 +2252,7 @@ async function showApp() {
   document.getElementById('sb-avatar').textContent = name.charAt(0).toUpperCase();
   await loadCurrentUserRole();
   await loadDeals();
+  await loadValuationDeals();
   await migrateDoneActivities();
 }
 
@@ -2254,32 +2270,6 @@ async function submitChangePassword() {
   document.getElementById('modal-change-password').classList.remove('open');
   toast('Senha atualizada com sucesso!');
   applyRoleRestrictions();
-}
-
-// ── VALUATION ──
-const VALUATION_STAGES = [
-  'Aguardando envio das informações',
-  'Informações recebidas parcialmente',
-  'Em análise',
-  'Envio do Q&A',
-  'Retorno do Q&A',
-  'Finalização da análise'
-];
-
-const VALUATION_COLORS = [
-  { bg: '#FEF3C7', bd: '#F59E0B', text: '#92400E' },
-  { bg: '#DBEAFE', bd: '#3B82F6', text: '#1E40AF' },
-  { bg: '#EDE9FE', bd: '#8B5CF6', text: '#5B21B6' },
-  { bg: '#FCE7F3', bd: '#EC4899', text: '#9D174D' },
-  { bg: '#D1FAE5', bd: '#10B981', text: '#065F46' },
-  { bg: '#F3F4F6', bd: '#6B7280', text: '#374151' }
-];
-
-// Etapas do pipeline comercial que entram no valuation
-const VALUATION_TRIGGER_STAGES = ['Preenchimento do formulário','Análise de Viabilidade','Deliberação em comitê'];
-
-function getValuationStage(deal) {
-  return deal.valuation_stage || VALUATION_STAGES[0];
 }
 
 async function moveValuationStage(dealId, stage) {
@@ -2336,7 +2326,6 @@ function renderValuation() {
     lane.querySelectorAll('.val-card').forEach(card => {
       card.addEventListener('dragstart', e => {
         window.valuationDragId = card.dataset.id;
-        window.draggedDealId = null; // impede o pipeline de capturar
         e.dataTransfer.setData('text/plain', card.dataset.id);
         e.dataTransfer.effectAllowed = 'move';
         setTimeout(() => card.style.opacity = '.4', 0);
@@ -2393,6 +2382,167 @@ function applyRoleRestrictions() {
     document.querySelectorAll('.btn-primary, .btn-danger').forEach(b => b.style.display='none');
   }
 }
+
+// ── VALUATION ──
+const VALUATION_STAGES = [
+  'Aguardando envio das informações',
+  'Informações recebidas parcialmente',
+  'Em análise',
+  'Envio do Q&A',
+  'Retorno do Q&A',
+  'Finalização da análise'
+];
+
+const VALUATION_COLORS = [
+  { bg: '#FEF3C7', bd: '#F59E0B', text: '#92400E' },
+  { bg: '#DBEAFE', bd: '#3B82F6', text: '#1E40AF' },
+  { bg: '#EDE9FE', bd: '#8B5CF6', text: '#5B21B6' },
+  { bg: '#FCE7F3', bd: '#EC4899', text: '#9D174D' },
+  { bg: '#D1FAE5', bd: '#10B981', text: '#065F46' },
+  { bg: '#F3F4F6', bd: '#6B7280', text: '#374151' }
+];
+
+const VALUATION_TRIGGER_STAGES = ['Preenchimento do formulário','Análise de Viabilidade','Deliberação em comitê'];
+
+let valuationDeals = [];
+let valDragId = null;
+
+async function loadValuationDeals() {
+  const { data, error } = await sb.from('valuation_deals').select('*').order('created_at');
+  if (error) { console.error('Valuation load error:', error); return; }
+  valuationDeals = data || [];
+}
+
+async function syncValuationDeal(deal) {
+  const { data } = await sb.from('valuation_deals').select('id').eq('deal_id', deal.id).single();
+  if (data) {
+    await sb.from('valuation_deals').update({
+      company: deal.company, mrr: deal.mrr || 0,
+      owner: deal.owner || '', pipeline_stage: deal.stage,
+      updated_at: new Date().toISOString()
+    }).eq('deal_id', deal.id);
+  } else {
+    const { data: newRec } = await sb.from('valuation_deals').insert({
+      deal_id: deal.id, company: deal.company,
+      mrr: deal.mrr || 0, owner: deal.owner || '',
+      pipeline_stage: deal.stage, valuation_stage: VALUATION_STAGES[0]
+    }).select().single();
+    if (newRec) valuationDeals.push(newRec);
+  }
+}
+
+async function updateValuationStage(valId, stage) {
+  await sb.from('valuation_deals').update({ valuation_stage: stage, updated_at: new Date().toISOString() }).eq('id', valId);
+  const v = valuationDeals.find(x=>x.id===valId);
+  if (v) v.valuation_stage = stage;
+  renderValuation();
+  toast('Etapa atualizada');
+}
+
+async function toggleValuationCheck(valId, field) {
+  const v = valuationDeals.find(x=>x.id===valId); if(!v)return;
+  v[field] = !v[field];
+  await sb.from('valuation_deals').update({ [field]: v[field], updated_at: new Date().toISOString() }).eq('id', valId);
+  openValuationDeal(valId);
+}
+
+function openValuationDeal(valId) {
+  const v = valuationDeals.find(x=>x.id===valId); if(!v)return;
+  const checks = [
+    { field: 'check_formulario', label: 'Formulário preenchido' },
+    { field: 'check_dre', label: 'DREs recebidas' },
+    { field: 'check_qa_elaborado', label: 'Q&A elaborado' },
+    { field: 'check_qa_respondido', label: 'Q&A respondido' },
+  ];
+  document.getElementById('valuation-modal-content').innerHTML = `
+    <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:20px;font-weight:800;color:var(--accent)">${v.company}</div>
+        ${v.mrr?`<div style="font-size:14px;font-weight:700;color:var(--text);margin-top:2px">${fmtMrr(v.mrr)} MRR</div>`:''}
+      </div>
+      <button onclick="document.getElementById('modal-valuation-deal').classList.remove('open')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:20px"><i class="ti ti-x"></i></button>
+    </div>
+    <div style="padding:12px 24px;background:var(--bg-surface);border-bottom:1px solid var(--border);display:flex;gap:24px;flex-wrap:wrap">
+      <div><div style="font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px">Responsável</div><div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">${v.owner||'—'}</div></div>
+      <div><div style="font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px">Etapa Pipeline</div><div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">${v.pipeline_stage||'—'}</div></div>
+    </div>
+    <div style="padding:20px 24px">
+      <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Etapa de Análise</div>
+      <select onchange="updateValuationStage('${v.id}',this.value)" style="font-family:var(--font);font-size:13px;padding:8px 12px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg-card);color:var(--text);width:100%;margin-bottom:20px">
+        ${VALUATION_STAGES.map(s=>`<option value="${s}" ${s===v.valuation_stage?'selected':''}>${s}</option>`).join('')}
+      </select>
+      <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Checklist</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${checks.map(ck=>`
+          <div onclick="toggleValuationCheck('${v.id}','${ck.field}')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-surface);border:1px solid ${v[ck.field]?'var(--accent)':'var(--border)'};border-radius:var(--radius);cursor:pointer;transition:border-color .15s">
+            <div style="width:20px;height:20px;border-radius:50%;border:2px solid ${v[ck.field]?'var(--accent)':'var(--border-md)'};background:${v[ck.field]?'var(--accent)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              ${v[ck.field]?'<i class="ti ti-check" style="font-size:11px;color:#fff"></i>':''}
+            </div>
+            <span style="font-size:13px;font-weight:500;color:${v[ck.field]?'var(--accent)':'var(--text-2)'}">${ck.label}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  document.getElementById('modal-valuation-deal').classList.add('open');
+}
+
+function renderValuation() {
+  const kb = document.getElementById('valuation-kanban');
+  if (!kb) return;
+  kb.innerHTML = '';
+  VALUATION_STAGES.forEach((stage, si) => {
+    const col = VALUATION_COLORS[si];
+    const ds = valuationDeals
+      .filter(v => (v.valuation_stage || VALUATION_STAGES[0]) === stage)
+      .sort((a,b) => (parseFloat(b.mrr)||0) - (parseFloat(a.mrr)||0));
+    const lane = document.createElement('div');
+    lane.className = 'val-lane';
+    lane.innerHTML = `
+      <div class="val-lane-head" style="background:${col.bg};border-bottom:2px solid ${col.bd}">
+        <div style="font-size:12px;font-weight:700;color:${col.text};line-height:1.3">${stage}</div>
+        <div style="font-size:11px;color:${col.text};opacity:.7;margin-top:2px">${ds.length} deal${ds.length!==1?'s':''}</div>
+      </div>
+      <div class="val-lane-body">
+        ${ds.map(v => {
+          const done = [v.check_formulario,v.check_dre,v.check_qa_elaborado,v.check_qa_respondido].filter(Boolean).length;
+          return `<div class="val-card" data-val-id="${v.id}" draggable="true">
+            <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px">${v.company}</div>
+            ${v.mrr?`<div style="font-size:12px;font-weight:700;color:var(--accent)">${fmtMrr(v.mrr)} MRR</div>`:''}
+            <div style="font-size:11px;color:var(--text-3);margin-top:4px;display:flex;align-items:center;gap:4px"><i class="ti ti-user" style="font-size:10px"></i>${v.owner||'—'}</div>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:6px">
+              <div style="flex:1;height:4px;background:var(--border);border-radius:2px"><div style="height:100%;width:${done*25}%;background:var(--accent);border-radius:2px"></div></div>
+              <span style="font-size:10px;color:var(--text-3);font-weight:600">${done}/4</span>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    kb.appendChild(lane);
+    const body = lane.querySelector('.val-lane-body');
+    // Click nos cards
+    lane.querySelectorAll('.val-card').forEach(card => {
+      card.addEventListener('click', () => openValuationDeal(card.dataset.valId));
+      card.addEventListener('dragstart', e => {
+        valDragId = card.dataset.valId;
+        e.dataTransfer.setData('text/plain', valDragId);
+        e.dataTransfer.effectAllowed = 'move';
+        setTimeout(() => card.style.opacity = '.4', 0);
+      });
+      card.addEventListener('dragend', () => { card.style.opacity = '1'; valDragId = null; });
+    });
+    const doDrop = async e => {
+      e.preventDefault(); e.stopPropagation();
+      body.classList.remove('val-drag-over');
+      const id = valDragId; valDragId = null;
+      if (!id) return;
+      await updateValuationStage(id, stage);
+    };
+    [body, lane].forEach(el => {
+      el.addEventListener('dragover', e => { e.preventDefault(); body.classList.add('val-drag-over'); });
+      el.addEventListener('dragleave', e => { if(!lane.contains(e.relatedTarget)) body.classList.remove('val-drag-over'); });
+      el.addEventListener('drop', doDrop);
+    });
+  });
+}
+
 
 async function loadUsersView() {
   const body = document.getElementById('users-list-body');
