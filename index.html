@@ -2414,7 +2414,7 @@ async function loadValuationDeals() {
 }
 
 async function syncValuationDeal(deal) {
-  const { data } = await sb.from('valuation_deals').select('id').eq('deal_id', deal.id).single();
+  const { data, error } = await sb.from('valuation_deals').select('id').eq('deal_id', deal.id).maybeSingle();
   if (data) {
     await sb.from('valuation_deals').update({
       company: deal.company, mrr: deal.mrr || 0,
