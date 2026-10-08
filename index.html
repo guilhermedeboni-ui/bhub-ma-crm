@@ -1280,7 +1280,7 @@ function renderKanban(){
     kb.appendChild(lane);
     const body=lane.querySelector('.lane-body');
     // Drop aceito tanto no body quanto no lane inteiro (header excluído)
-    const dropHandler = async e=>{e.preventDefault();body.classList.remove('drag-over');lane.classList.remove('drag-over');if(!draggedDealId)return;const d=deals.find(x=>x.id===draggedDealId);if(!d||d.stage===stage)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Etapa alterada para "'+stage+'".'});d.stage=stage;saveDeal(d);toast('Etapa atualizada');render();};
+    const dropHandler = async e=>{e.preventDefault();body.classList.remove('drag-over');lane.classList.remove('drag-over');if(window.valuationDragId)return;if(!draggedDealId)return;const d=deals.find(x=>x.id===draggedDealId);if(!d||d.stage===stage)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Etapa alterada para "'+stage+'".'});d.stage=stage;saveDeal(d);toast('Etapa atualizada');render();};
     const overHandler = e=>{e.preventDefault();body.classList.add('drag-over');};
     const leaveHandler = e=>{if(!lane.contains(e.relatedTarget)){body.classList.remove('drag-over');}};
     body.addEventListener('dragover', overHandler);
@@ -2352,9 +2352,9 @@ function renderValuation() {
       e.stopPropagation();
       body.classList.remove('val-drag-over');
       lane.classList.remove('val-drag-over');
-      const id = window.valuationDragId || e.dataTransfer.getData('text/plain');
-      window.valuationDragId = null;
+      const id = window.valuationDragId;
       if (!id) return;
+      window.valuationDragId = null;
       await moveValuationStage(id, stage);
     };
     const overHandler = e => { e.preventDefault(); body.classList.add('val-drag-over'); };
