@@ -130,7 +130,12 @@
 
     /* ── MAIN CONTENT ── */
     .main-content { padding: 20px 24px; flex: 1; overflow-x: hidden; }
-    .main-content.valuation-active { overflow-x: visible; padding: 0; }
+    .view-valuation-wrap { background: var(--bg); min-height: calc(100vh - 58px); padding: 16px 24px; }
+    .valuation-kanban { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 12px; min-height: calc(100vh - 200px); align-items: flex-start; cursor: grab; user-select: none; }
+    .valuation-kanban.dragging-scroll { cursor: grabbing; }
+    .valuation-kanban::-webkit-scrollbar { height: 6px; }
+    .valuation-kanban::-webkit-scrollbar-track { background: var(--bg-surface); border-radius: 3px; }
+    .valuation-kanban::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 3px; }
 
     /* ── TOOLBAR ── */
     .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
@@ -501,14 +506,12 @@
       </div>
 
       <!-- USERS VIEW -->
-      <div id="view-valuation" style="display:none;height:100vh;display:flex;flex-direction:column">
-        <div style="padding:20px 24px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-          <div>
-            <div style="font-size:18px;font-weight:700;color:var(--text)">Análise de Negócio</div>
-            <div style="font-size:13px;color:var(--text-3);margin-top:2px">Deals em análise pelo time de negócio</div>
-          </div>
+      <div id="view-valuation" class="view-valuation-wrap" style="display:none">
+        <div style="margin-bottom:16px">
+          <div style="font-size:18px;font-weight:700;color:var(--text)">Análise de Negócio</div>
+          <div style="font-size:13px;color:var(--text-3);margin-top:2px">Deals em análise pelo time de negócio</div>
         </div>
-        <div id="valuation-kanban" style="display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;padding:0 24px 24px;align-items:flex-start;flex:1;-webkit-overflow-scrolling:touch"></div>
+        <div id="valuation-kanban" class="valuation-kanban"></div>
       </div>
 
       <div id="view-users" style="display:none">
@@ -2134,8 +2137,6 @@ function setView(v) {
   const titles = {pipeline:'Pipeline M&A', activities:'Atividades', valuation:'Valuation', users:'Usuários'};
   document.getElementById('page-title').textContent = titles[v]||'';
   if (v==='activities') renderAllActivities();
-  const mc = document.querySelector('.main-content');
-  if (mc) mc.classList.toggle('valuation-active', v==='valuation');
   if (v==='valuation') renderValuation();
   if (v==='users') {
     if (currentUserRole !== 'admin') { toast('Acesso restrito.','error'); setView('pipeline'); return; }
@@ -2605,8 +2606,8 @@ async function inlineEditCity(dealId, el) {
 (function() {
   let isDown=false,startX,scrollLeft,target;
   document.addEventListener('mousedown',e=>{
-    const kb=e.target.closest('.kanban'); if(!kb)return;
-    if(e.target.closest('.deal-card')||e.target.closest('button')||e.target.closest('.lane-add-btn'))return;
+    const kb=e.target.closest('.kanban,.valuation-kanban'); if(!kb)return;
+    if(e.target.closest('.deal-card,.val-card')||e.target.closest('button')||e.target.closest('.lane-add-btn'))return;
     isDown=true;target=kb;startX=e.pageX-kb.offsetLeft;scrollLeft=kb.scrollLeft;kb.classList.add('dragging-scroll');
   });
   document.addEventListener('mouseleave',()=>{isDown=false;if(target)target.classList.remove('dragging-scroll');});
