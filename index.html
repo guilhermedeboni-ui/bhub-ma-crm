@@ -1248,7 +1248,7 @@ function renderKanban(){
   kb.innerHTML='';
   STAGES.forEach(stage=>{
     const c=STAGE_COLORS[stage];
-    const ds=fd.filter(d=>d.stage===stage);
+    const ds=fd.filter(d=>d.stage===stage).sort((a,b)=>(b.mrr||0)-(a.mrr||0));
     const stageMrr=ds.reduce((sum,d)=>sum+(d.mrr||0),0);
     const lane=document.createElement('div');
     lane.className='lane';
