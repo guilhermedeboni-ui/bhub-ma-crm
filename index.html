@@ -2243,6 +2243,26 @@ async function init() {
   else { document.getElementById('loading-screen').style.display='none'; document.getElementById('auth-screen').style.display='flex'; }
 }
 
+async function loadCurrentUserRole() {
+  try {
+    const { data } = await sb.from('crm_profiles').select('role, must_change_password').eq('user_id', currentUser.id).single();
+    currentUserRole = data?.role || 'editor';
+    if (data?.must_change_password) {
+      document.getElementById('modal-change-password').classList.add('open');
+      return;
+    }
+  } catch(e) { currentUserRole = 'editor'; }
+  applyRoleRestrictions();
+}
+
+function applyRoleRestrictions() {
+  const usersNav = document.getElementById('nav-users');
+  if (usersNav) usersNav.style.display = currentUserRole === 'admin' ? 'flex' : 'none';
+  if (currentUserRole === 'viewer') {
+    document.querySelectorAll('.btn-primary, .btn-danger').forEach(b => b.style.display='none');
+  }
+}
+
 async function showApp() {
   document.getElementById('loading-screen').style.display='none';
   document.getElementById('auth-screen').style.display='none';
@@ -2350,34 +2370,35 @@ function openValuationDeal(valId) {
     { field: 'check_qa_elaborado', label: 'Q&A elaborado' },
     { field: 'check_qa_respondido', label: 'Q&A respondido' },
   ];
-  document.getElementById('valuation-modal-content').innerHTML = `
-    <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-size:20px;font-weight:800;color:var(--accent)">${v.company}</div>
-        ${v.mrr?`<div style="font-size:14px;font-weight:700;color:var(--text);margin-top:2px">${fmtMrr(v.mrr)} MRR</div>`:''}
-      </div>
-      <button onclick="document.getElementById('modal-valuation-deal').style.display='none'" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:20px"><i class="ti ti-x"></i></button>
-    </div>
-    <div style="padding:12px 24px;background:var(--bg-surface);border-bottom:1px solid var(--border);display:flex;gap:24px;flex-wrap:wrap">
-      <div><div style="font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px">Responsável</div><div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">${v.owner||'—'}</div></div>
-      <div><div style="font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px">Etapa Pipeline</div><div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">${v.pipeline_stage||'—'}</div></div>
-    </div>
-    <div style="padding:20px 24px">
-      <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Etapa de Análise</div>
-      <select onchange="updateValuationStage('${v.id}',this.value)" style="font-family:var(--font);font-size:13px;padding:8px 12px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg-card);color:var(--text);width:100%;margin-bottom:20px">
-        ${VALUATION_STAGES.map(s=>`<option value="${s}" ${s===v.valuation_stage?'selected':''}>${s}</option>`).join('')}
-      </select>
-      <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Checklist</div>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        ${checks.map(ck=>`
-          <div onclick="toggleValuationCheck('${v.id}','${ck.field}')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-surface);border:1px solid ${v[ck.field]?'var(--accent)':'var(--border)'};border-radius:var(--radius);cursor:pointer;transition:border-color .15s">
-            <div style="width:20px;height:20px;border-radius:50%;border:2px solid ${v[ck.field]?'var(--accent)':'var(--border-md)'};background:${v[ck.field]?'var(--accent)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              ${v[ck.field]?'<i class="ti ti-check" style="font-size:11px;color:#fff"></i>':''}
-            </div>
-            <span style="font-size:13px;font-weight:500;color:${v[ck.field]?'var(--accent)':'var(--text-2)'}">${ck.label}</span>
-          </div>`).join('')}
-      </div>
-    </div>`;
+  const mrrHtml = v.mrr ? '<div style="font-size:14px;font-weight:700;color:var(--text);margin-top:2px">'+fmtMrr(v.mrr)+' MRR</div>' : '';
+  const stageOpts = VALUATION_STAGES.map(s => '<option value="'+s+'"'+(s===v.valuation_stage?' selected':'')+'>'+s+'</option>').join('');
+  const checksHtml = checks.map(ck => {
+    const active = v[ck.field];
+    const borderColor = active ? 'var(--accent)' : 'var(--border)';
+    const circleBorder = active ? 'var(--accent)' : 'var(--border-md)';
+    const circleBg = active ? 'var(--accent)' : 'transparent';
+    const checkIcon = active ? '<i class="ti ti-check" style="font-size:11px;color:#fff"></i>' : '';
+    const textColor = active ? 'var(--accent)' : 'var(--text-2)';
+    return '<div onclick="toggleValuationCheck(\''+v.id+'\',\''+ck.field+'\')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-surface);border:1px solid '+borderColor+';border-radius:var(--radius);cursor:pointer;transition:border-color .15s">'+
+      '<div style="width:20px;height:20px;border-radius:50%;border:2px solid '+circleBorder+';background:'+circleBg+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+checkIcon+'</div>'+
+      '<span style="font-size:13px;font-weight:500;color:'+textColor+'">'+ck.label+'</span></div>';
+  }).join('');
+
+  document.getElementById('valuation-modal-content').innerHTML =
+    '<div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">'+
+      '<div><div style="font-size:20px;font-weight:800;color:var(--accent)">'+v.company+'</div>'+mrrHtml+'</div>'+
+      '<button onclick="document.getElementById(\'modal-valuation-deal\').style.display=\'none\'" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:20px"><i class="ti ti-x"></i></button>'+
+    '</div>'+
+    '<div style="padding:12px 24px;background:var(--bg-surface);border-bottom:1px solid var(--border);display:flex;gap:24px;flex-wrap:wrap">'+
+      '<div><div style="font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px">Responsável</div><div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">'+(v.owner||'—')+'</div></div>'+
+      '<div><div style="font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px">Etapa Pipeline</div><div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">'+(v.pipeline_stage||'—')+'</div></div>'+
+    '</div>'+
+    '<div style="padding:20px 24px">'+
+      '<div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Etapa de Análise</div>'+
+      '<select onchange="updateValuationStage(\''+v.id+'\',this.value)" style="font-family:var(--font);font-size:13px;padding:8px 12px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg-card);color:var(--text);width:100%;margin-bottom:20px">'+stageOpts+'</select>'+
+      '<div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Checklist</div>'+
+      '<div style="display:flex;flex-direction:column;gap:10px">'+checksHtml+'</div>'+
+    '</div>';
   document.getElementById('modal-valuation-deal').style.display = 'flex';
 }
 
