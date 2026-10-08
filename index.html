@@ -2447,7 +2447,7 @@ function openValuationDeal(valId) {
       '</div>'+
     '</div>'+
     '<div style="padding:12px 24px;background:var(--bg-surface);border-bottom:1px solid var(--border);display:flex;gap:24px;flex-wrap:wrap">'+
-      '<div><div style="font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px">Etapa Pipeline</div><div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">'+(v.pipeline_stage||'—')+'</div></div>'+
+
       (deal&&deal.segment?'<div><div style="font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px">Segmento</div><div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">'+deal.segment+'</div></div>':'')+
       (deal&&deal.state?'<div><div style="font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px">Estado</div><div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">'+deal.state+'</div></div>':'')+
       (deal&&deal.city?'<div><div style="font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px">Município</div><div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">'+deal.city+'</div></div>':'')+
