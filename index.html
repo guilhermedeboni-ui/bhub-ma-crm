@@ -2360,6 +2360,7 @@ async function toggleValuationCheck(valId, field) {
   v[field] = !v[field];
   await sb.from('valuation_deals').update({ [field]: v[field], updated_at: new Date().toISOString() }).eq('id', valId);
   openValuationDeal(valId);
+  renderValuation();
 }
 
 function openValuationDeal(valId) {
