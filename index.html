@@ -1248,7 +1248,7 @@ function renderKanban(){
   kb.innerHTML='';
   STAGES.forEach(stage=>{
     const c=STAGE_COLORS[stage];
-    const ds=fd.filter(d=>d.stage===stage).sort((a,b)=>(b.mrr||0)-(a.mrr||0));
+    const ds=fd.filter(d=>d.stage===stage).sort((a,b)=>(parseFloat(b.mrr)||0)-(parseFloat(a.mrr)||0));
     const stageMrr=ds.reduce((sum,d)=>sum+(d.mrr||0),0);
     const lane=document.createElement('div');
     lane.className='lane';
@@ -2311,7 +2311,7 @@ async function inviteUser() {
     return;
   }
   // Salvar perfil com must_change_password
-  const { error: profileError } = await sb.from('crm_profiles').insert({ user_id: data.id, email, full_name: name, role, must_change_password: true });
+  const { error: profileError } = await sb.from('crm_profiles').insert({ user_id: data.id, email, full_name: name, role, must_change_password: true, pending: false });
   if (profileError) {
     // fallback para upsert caso já exista
     await sb.from('crm_profiles').update({ full_name: name, role, must_change_password: true }).eq('user_id', data.id);
