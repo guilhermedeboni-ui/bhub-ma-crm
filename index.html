@@ -507,7 +507,7 @@
             <div style="font-size:13px;color:var(--text-3);margin-top:2px">Deals em análise pelo time de negócio</div>
           </div>
         </div>
-        <div id="valuation-kanban" style="display:flex;gap:12px;overflow-x:auto;padding:0 24px 24px;align-items:flex-start;min-height:calc(100vh - 140px)"></div>
+        <div id="valuation-kanban" style="display:flex;gap:12px;overflow-x:scroll;padding:0 24px 24px;align-items:flex-start;min-height:calc(100vh - 140px);scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch"></div>
       </div>
 
       <div id="view-users" style="display:none">
@@ -2256,7 +2256,7 @@ const VALUATION_STAGES = [
   'Aguardando envio das informações',
   'Informações recebidas parcialmente',
   'Em análise',
-  'Lobato tem que enviar o Q&A',
+  'Envio do Q&A',
   'Retorno do Q&A',
   'Finalização da análise'
 ];
@@ -2324,13 +2324,14 @@ function renderValuation() {
           </div>`).join('')}
       </div>`;
 
-    // Drag & drop
-    const body = lane.querySelector('.val-lane-body');
+    // Drag & drop — adicionar após inserir no DOM
+    kb.appendChild(lane);
 
+    const body = lane.querySelector('.val-lane-body');
     lane.querySelectorAll('.val-card').forEach(card => {
       card.addEventListener('dragstart', e => {
         valuationDragId = card.dataset.id;
-        card.style.opacity = '.4';
+        setTimeout(() => card.style.opacity = '.4', 0);
         e.dataTransfer.effectAllowed = 'move';
       });
       card.addEventListener('dragend', () => { card.style.opacity = '1'; });
@@ -2341,8 +2342,9 @@ function renderValuation() {
       body.classList.remove('drag-over');
       lane.classList.remove('drag-over');
       if (!valuationDragId) return;
-      await moveValuationStage(valuationDragId, stage);
+      const id = valuationDragId;
       valuationDragId = null;
+      await moveValuationStage(id, stage);
     };
     const overHandler = e => { e.preventDefault(); body.classList.add('drag-over'); };
     const leaveHandler = e => { if (!lane.contains(e.relatedTarget)) body.classList.remove('drag-over'); };
@@ -2353,8 +2355,6 @@ function renderValuation() {
     lane.addEventListener('dragover', overHandler);
     lane.addEventListener('dragleave', leaveHandler);
     lane.addEventListener('drop', dropHandler);
-
-    kb.appendChild(lane);
   });
 }
 
