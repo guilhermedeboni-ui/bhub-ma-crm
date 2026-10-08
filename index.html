@@ -132,6 +132,7 @@
     .main-content { padding: 20px 24px; flex: 1; overflow-x: hidden; }
     .view-valuation-wrap { background: var(--bg); min-height: calc(100vh - 58px); padding: 16px 24px; }
     .valuation-kanban { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 12px; min-height: calc(100vh - 200px); align-items: flex-start; cursor: grab; user-select: none; }
+    .val-lane-body.val-drag-over { background: rgba(55,138,221,.08); }
     .valuation-kanban.dragging-scroll { cursor: grabbing; }
     .valuation-kanban::-webkit-scrollbar { height: 6px; }
     .valuation-kanban::-webkit-scrollbar-track { background: var(--bg-surface); border-radius: 3px; }
@@ -2297,7 +2298,7 @@ function renderValuation() {
   // Filtrar deals elegíveis (a partir de Proposta no pipeline comercial)
   const eligible = deals.filter(d => VALUATION_TRIGGER_STAGES.includes(d.stage));
 
-  let valuationDragId = null;
+  window.valuationDragId = null;
 
   VALUATION_STAGES.forEach((stage, si) => {
     const col = VALUATION_COLORS[si];
@@ -2334,28 +2335,30 @@ function renderValuation() {
     const body = lane.querySelector('.val-lane-body');
     lane.querySelectorAll('.val-card').forEach(card => {
       card.addEventListener('dragstart', e => {
-        valuationDragId = card.dataset.id;
+        window.valuationDragId = card.dataset.id;
+        window.draggedDealId = null; // impede o pipeline de capturar
         e.dataTransfer.setData('text/plain', card.dataset.id);
         e.dataTransfer.effectAllowed = 'move';
         setTimeout(() => card.style.opacity = '.4', 0);
       });
-      card.addEventListener('dragend', e => {
+      card.addEventListener('dragend', () => {
         card.style.opacity = '1';
+        window.valuationDragId = null;
       });
     });
 
     const dropHandler = async e => {
       e.preventDefault();
       e.stopPropagation();
-      body.classList.remove('drag-over');
-      lane.classList.remove('drag-over');
-      const id = valuationDragId || e.dataTransfer.getData('text/plain');
-      valuationDragId = null;
+      body.classList.remove('val-drag-over');
+      lane.classList.remove('val-drag-over');
+      const id = window.valuationDragId || e.dataTransfer.getData('text/plain');
+      window.valuationDragId = null;
       if (!id) return;
       await moveValuationStage(id, stage);
     };
-    const overHandler = e => { e.preventDefault(); body.classList.add('drag-over'); };
-    const leaveHandler = e => { if (!lane.contains(e.relatedTarget)) body.classList.remove('drag-over'); };
+    const overHandler = e => { e.preventDefault(); body.classList.add('val-drag-over'); };
+    const leaveHandler = e => { if (!lane.contains(e.relatedTarget)) body.classList.remove('val-drag-over'); };
 
     body.addEventListener('dragover', overHandler);
     body.addEventListener('dragleave', leaveHandler);
