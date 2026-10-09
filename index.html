@@ -2219,10 +2219,12 @@ function updateBadges() {
   const myName = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
   // Badge pipeline
   const urgentPipeline = deals.reduce((s,d)=>s+d.activities.filter(a=>!a.done&&a.date&&a.date<=today&&(!a.owner||a.owner===myName)).length, 0);
-  const b = document.getElementById('act-badge');
-  if (b) { if (urgentPipeline>0){b.style.display='inline';b.textContent=urgentPipeline;}else b.style.display='none'; }
   // Badge valuation
   const urgentVal = Object.values(valActivitiesCache).reduce((s,acts)=>s+acts.filter(a=>!a.done&&a.date&&a.date<=today&&(!a.owner||a.owner===myName)).length, 0);
+  // Badge menu Atividades = pipeline + valuation
+  const b = document.getElementById('act-badge');
+  if (b) { const total=urgentPipeline+urgentVal; if(total>0){b.style.display='inline';b.textContent=total;}else b.style.display='none'; }
+  // Badge menu Análise de Negócio = só valuation
   const bv = document.getElementById('val-act-badge');
   if (bv) { if (urgentVal>0){bv.style.display='inline';bv.textContent=urgentVal;}else bv.style.display='none'; }
 }
@@ -2386,6 +2388,21 @@ async function loadValActivities(valId) {
   return valActivitiesCache[valId];
 }
 
+function renderValHistHtml(valId) {
+  const done = (valActivitiesCache[valId]||[]).filter(a => a.done).sort((a,b) => (b.done_at||'').localeCompare(a.done_at||''));
+  if (!done.length) return '';
+  return '<div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Concluídas</div>'+
+    done.map(a => {
+      const doneDate = a.done_at ? new Date(a.done_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}) : '';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--bg-surface);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:4px;opacity:.6">'+
+        '<div class="act-check done"><i class="ti ti-check"></i></div>'+
+        '<div style="flex:1"><div style="font-size:13px;color:var(--text-3);text-decoration:line-through">'+a.title+'</div>'+
+          (doneDate?'<div style="font-size:11px;color:var(--text-3)">Concluída em '+doneDate+'</div>':'')+
+        '</div>'+
+      '</div>';
+    }).join('');
+}
+
 function renderValuationActivitiesHtml(valId) {
   const acts = (valActivitiesCache[valId]||[]).filter(a => !a.done).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   if (!acts.length) return '<p style="font-size:13px;color:var(--text-3)">Nenhuma atividade pendente.</p>';
@@ -2437,6 +2454,10 @@ async function toggleActFromValuation(valId, actId) {
   // Atualizar modal se aberto
   const valList = document.getElementById('val-act-list');
   if (valList) valList.innerHTML = renderValuationActivitiesHtml(valId);
+  const histList = document.getElementById('val-hist-list');
+  if (histList) histList.innerHTML = renderValHistHtml(valId);
+  // Atualizar card no kanban
+  renderValuation();
   // Atualizar menu Atividades se aberto
   const actView = document.getElementById('view-activities');
   if (actView && actView.style.display !== 'none') {
@@ -2592,6 +2613,7 @@ function openValuationDeal(valId) {
           '<button onclick="addValuationActivity(\''+v.id+'\')" class="btn-add" style="white-space:nowrap"><i class="ti ti-plus"></i> Adicionar</button>'+
         '</div>'+
         '<div id="val-act-list"><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>'+
+        '<div id="val-hist-list" style="margin-top:16px"></div>'+
       '</div>'+
     '</div>';
   document.getElementById('modal-valuation-deal').style.display = 'flex';
@@ -2599,6 +2621,9 @@ function openValuationDeal(valId) {
   loadValActivities(v.id).then(() => {
     const el = document.getElementById('val-act-list');
     if (el) el.innerHTML = renderValuationActivitiesHtml(v.id);
+    const hl = document.getElementById('val-hist-list');
+    if (hl) hl.innerHTML = renderValHistHtml(v.id);
+    updateBadges();
   });
 }
 
@@ -2637,7 +2662,19 @@ function renderValuation() {
               '<div style="flex:1;height:3px;background:var(--border);border-radius:2px"><div style="height:100%;width:'+(done*25)+'%;background:var(--accent);border-radius:2px"></div></div>'+
               '<span style="font-size:10px;color:var(--text-3);font-weight:600">'+done+'/4</span>'+
             '</div>'+
-          '</div>';
+            (()=>{
+              const acts = (valActivitiesCache[v.id]||[]).filter(a=>!a.done&&a.date).sort((a,b)=>a.date.localeCompare(b.date));
+              const next = acts[0];
+              const today = todayLocal();
+              if (next) {
+                const od = isOverdue(next.date);
+                const isToday = next.date === today;
+                const dotColor = od?'dot-red':isToday?'dot-green':'dot-gray';
+                const txtStyle = od?'color:#EF4444;font-weight:600':isToday?'color:#22C55E;font-weight:600':'';
+                return '<div class="deal-footer"><div class="deal-activity"><span class="activity-dot '+dotColor+'"></span><span style="'+txtStyle+'">'+next.title+'</span></div></div>';
+              }
+              return '<div class="deal-footer"><div class="deal-activity"><span class="activity-dot" style="background:#F59E0B"></span><span style="color:#F59E0B;font-size:11px">Sem atividades</span></div></div>';
+            })()+'</div>';
         }).join('')}
       </div>`;
     kb.appendChild(lane);
