@@ -2544,6 +2544,40 @@ function toggleValActComment(valId, actId, triggerEl) {
   }, 10);
 }
 
+function editValSharepoint(valId, triggerEl) {
+  document.querySelectorAll('.sharepoint-popover').forEach(el=>el.remove());
+  const v = valuationDeals.find(x=>x.id===valId); if(!v)return;
+  const pop = document.createElement('div');
+  pop.className = 'sharepoint-popover';
+  const rect = triggerEl.getBoundingClientRect();
+  const topPos = rect.bottom + 6;
+  const leftPos = Math.min(rect.left - 200, window.innerWidth - 360);
+  pop.style.cssText = 'position:fixed;top:'+topPos+'px;left:'+Math.max(8,leftPos)+'px;width:340px;z-index:2000;background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--radius-lg);box-shadow:0 8px 24px rgba(0,0,0,.18);padding:12px;display:flex;flex-direction:column;gap:8px;';
+  pop.innerHTML = '<div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px"><i class="ti ti-brand-sharepoint" style="color:#0078D4"></i> Link da pasta SharePoint</div>'+
+    '<input id="val-sharepoint-inp" type="url" placeholder="https://bhub.sharepoint.com/..." value="'+(v.sharepoint_url||'')+'" style="font-size:12px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);outline:none;width:100%;background:var(--bg-surface);color:var(--text);font-family:var(--font)">'+
+    '<div style="display:flex;gap:6px;justify-content:flex-end">'+
+      '<button onclick="this.closest(\'.sharepoint-popover\').remove()" style="background:none;border:1px solid var(--border-md);color:var(--text-2);font-size:12px;font-weight:600;font-family:var(--font);padding:5px 12px;border-radius:var(--radius);cursor:pointer">Cancelar</button>'+
+      '<button id="val-sp-save" style="background:var(--accent);border:none;color:#fff;font-size:12px;font-weight:600;font-family:var(--font);padding:5px 12px;border-radius:var(--radius);cursor:pointer">Salvar</button>'+
+    '</div>';
+  document.body.appendChild(pop);
+  const inp = pop.querySelector('#val-sharepoint-inp');
+  inp.focus(); inp.select();
+  pop.querySelector('#val-sp-save').addEventListener('click', async () => {
+    const url = inp.value.trim();
+    v.sharepoint_url = url || null;
+    await sb.from('valuation_deals').update({ sharepoint_url: v.sharepoint_url }).eq('id', valId);
+    toast('Link salvo!');
+    pop.remove();
+    openValuationDeal(valId);
+  });
+  inp.addEventListener('keydown', e => { if(e.key==='Enter') pop.querySelector('#val-sp-save').click(); });
+  setTimeout(() => {
+    document.addEventListener('mousedown', function handler(e) {
+      if (!pop.contains(e.target) && e.target !== triggerEl) { pop.remove(); document.removeEventListener('mousedown', handler); }
+    });
+  }, 10);
+}
+
 async function deleteValuationDeal(valId) {
   if (!confirm('Remover este deal da Análise de Negócio?')) return;
   await sb.from('valuation_deals').delete().eq('id', valId);
@@ -2585,43 +2619,58 @@ function openValuationDeal(valId) {
 
   // Buscar dados completos do deal original para segmento, estado, município
   const deal = deals.find(x => x.id == v.deal_id);
+  const spHtml = v.sharepoint_url
+    ? '<a href="'+v.sharepoint_url+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text-2);font-size:12px;font-weight:500" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'"><i class="ti ti-brand-sharepoint" style="font-size:16px;color:#0078D4;flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Abrir pasta</span><i class="ti ti-external-link" style="font-size:11px;margin-left:auto;flex-shrink:0;opacity:.5"></i></a>'
+    : '<div style="padding:7px 10px;background:var(--bg-surface);border:1px dashed var(--border-md);border-radius:var(--radius);font-size:12px;color:var(--text-3);text-align:center;cursor:pointer" onclick="editValSharepoint(\''+v.id+'\',this)">+ Adicionar link</div>';
   document.getElementById('valuation-modal-content').innerHTML =
-    // Header com botão voltar
-    '<button class="modal-close" onclick="document.getElementById(\'modal-valuation-deal\').classList.remove(\'open\')" style="flex-shrink:0;margin-top:4px"><i class="ti ti-arrow-left"></i></button>'+
-    '<div style="flex:1;display:flex;overflow:hidden">'+
-      '<div class="deal-sidebar">'+
-        '<div style="margin-bottom:4px">'+
-          '<div class="sidebar-section-title">Etapa de Análise</div>'+
-          '<select onchange="updateValuationStage(\''+v.id+'\',this.value)" style="font-family:var(--font);font-size:13px;padding:8px 10px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg-card);color:var(--text);width:100%">'+stageOpts+'</select>'+
+    // TOP BAR igual ao pipeline
+    '<div style="flex-shrink:0;background:var(--bg-surface);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:flex-start;gap:16px">'+
+      '<button class="modal-close" onclick="document.getElementById(\'modal-valuation-deal\').classList.remove(\'open\')" style="flex-shrink:0;margin-top:4px"><i class="ti ti-arrow-left"></i></button>'+
+      '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:8px">'+
+        '<div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap">'+
+          '<div style="font-size:18px;font-weight:800;color:var(--accent)">'+v.company+'</div>'+
+          (v.mrr?'<div style="font-size:18px;font-weight:800;color:var(--text)">'+fmtMrr(v.mrr)+' MRR</div>':'')+
         '</div>'+
-        '<div style="padding-top:12px;border-top:1px solid var(--border)">'+
-          '<div class="sidebar-section-title">Checklist</div>'+
+        '<div style="display:flex;align-items:flex-start;justify-content:center;gap:16px;flex-wrap:wrap">'+
+          (deal&&deal.segment?'<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Segmento</div><span style="font-size:12px;color:var(--text-2)">'+deal.segment+'</span></div>':'')+
+          (deal&&deal.state?'<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Estado</div><span style="font-size:12px;color:var(--text-2)">'+deal.state+'</span></div>':'')+
+          (deal&&deal.city?'<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Município</div><span style="font-size:12px;color:var(--text-2)">'+deal.city+'</span></div>':'')+
+          '<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Etapa de Análise</div>'+
+            '<select onchange="updateValuationStage(\''+v.id+'\',this.value)" style="font-size:12px;font-weight:600;border:none;background:var(--bg-card);color:var(--text-2);font-family:var(--font);cursor:pointer;padding:2px 4px;text-align:center;border-radius:var(--radius)">'+stageOpts+'</select>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    // BODY LAYOUT
+    '<div class="deal-layout">'+
+      '<div class="deal-sidebar">'+
+        // SharePoint
+        '<div>'+
+          '<div class="sidebar-section-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
+            '<span><i class="ti ti-folder" style="font-size:12px;margin-right:4px;color:var(--text-3)"></i>SharePoint</span>'+
+            '<button onclick="editValSharepoint(\''+v.id+'\',this)" style="background:none;border:none;color:var(--text-3);font-size:12px;cursor:pointer;padding:0;font-family:var(--font)" title="Editar link"><i class="ti ti-pencil"></i></button>'+
+          '</div>'+
+          spHtml+
+        '</div>'+
+        // Checklist
+        '<div>'+
+          '<div class="sidebar-section-title">Checklist Análise de Negócio</div>'+
           '<div style="display:flex;flex-direction:column;gap:8px">'+checksHtml+'</div>'+
         '</div>'+
-        (deal?'<div style="padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px">'+
-          (deal.segment?'<div><div class="detail-label">Segmento</div><div class="detail-val">'+deal.segment+'</div></div>':'')+
-          (deal.state?'<div><div class="detail-label">Estado</div><div class="detail-val">'+deal.state+'</div></div>':'')+
-          (deal.city?'<div><div class="detail-label">Município</div><div class="detail-val">'+deal.city+'</div></div>':'')+
-        '</div>':'')+
+        // Rodapé com excluir
         '<div style="padding-top:8px;border-top:1px solid var(--border)">'+
           '<button onclick="deleteValuationDeal(\''+v.id+'\')" class="btn-danger"><i class="ti ti-trash"></i> Remover da análise</button>'+
         '</div>'+
       '</div>'+
       '<div class="deal-main-scroll">'+
-        '<div style="text-align:center;margin-bottom:24px">'+
-          '<div style="font-size:22px;font-weight:800;color:var(--accent)">'+v.company+'</div>'+
-          (v.mrr?'<div style="font-size:16px;font-weight:700;color:var(--text);margin-top:4px">'+fmtMrr(v.mrr)+' MRR</div>':'')+
+        '<div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px"><i class="ti ti-calendar-event"></i> Atividades</div>'+
+        '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'+
+          '<input id="val-act-title" placeholder="Título da atividade" style="flex:1;min-width:180px;font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:7px 10px;background:var(--bg-card);color:var(--text)"/>'+
+          '<input id="val-act-date" type="date" onclick="this.showPicker&&this.showPicker()" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:7px 10px;background:var(--bg-card);color:var(--text);cursor:pointer"/>'+
+          '<button onclick="addValuationActivity(\''+v.id+'\')" class="btn-add" style="white-space:nowrap"><i class="ti ti-plus"></i> Adicionar</button>'+
         '</div>'+
-        '<div>'+
-          '<div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px"><i class="ti ti-calendar-event"></i> Atividades</div>'+
-          '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'+
-            '<input id="val-act-title" placeholder="Título da atividade" style="flex:1;min-width:180px;font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:7px 10px;background:var(--bg-card);color:var(--text)"/>'+
-            '<input id="val-act-date" type="date" onclick="this.showPicker&&this.showPicker()" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:7px 10px;background:var(--bg-card);color:var(--text);cursor:pointer"/>'+
-            '<button onclick="addValuationActivity(\''+v.id+'\')" class="btn-add" style="white-space:nowrap"><i class="ti ti-plus"></i> Adicionar</button>'+
-          '</div>'+
-          '<div id="val-act-list"><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>'+
-          '<div id="val-hist-list" style="margin-top:16px"></div>'+
-        '</div>'+
+        '<div id="val-act-list"><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>'+
+        '<div id="val-hist-list" style="margin-top:16px"></div>'+
       '</div>'+
     '</div>';
   document.getElementById('modal-valuation-deal').classList.add('open');
