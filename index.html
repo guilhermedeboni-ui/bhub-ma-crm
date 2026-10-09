@@ -1382,7 +1382,12 @@ function renderAllActivities(){
   const filterUser = document.getElementById('filter-act-user')?.value || '';
   const myActsName = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
   let all=[];
-  deals.forEach(d=>d.activities.forEach(a=>all.push({...a,dealId:d.id,dealName:d.company})));
+  deals.forEach(d=>d.activities.forEach(a=>all.push({...a,dealId:d.id,dealName:d.company,_source:'pipeline'})));
+  // Incluir atividades do valuation
+  Object.entries(valActivitiesCache).forEach(([valId, acts]) => {
+    const v = valuationDeals.find(x => x.id === valId);
+    acts.forEach(a => all.push({...a, dealId: null, _valId: valId, dealName: (v?v.company:'Análise de Negócio'), _source:'valuation'}));
+  });
   if (!showDone) all = all.filter(a => !a.done);
   if (showMine) all = all.filter(a => !a.owner || a.owner === myActsName);
   else if (filterUser) all = all.filter(a => a.owner === filterUser);
@@ -1398,15 +1403,19 @@ function renderAllActivities(){
     const isToday=a.date===today;
     const statusColor = od?'#EF4444':isToday?'#22C55E':a.done?'#22C55E':'var(--text-3)';
     const statusText = a.done?'Concluída':od?'Vencida':isToday?'Hoje':'Pendente';
-    return `<tr class="${a.done?'done':''}" data-act-id="${a.id}" onclick="openDeal(${JSON.stringify(a.dealId)})">
+    const isVal = a._source === 'valuation';
+    const rowClick = isVal ? `openValuationDeal('${a._valId}')` : `openDeal(${JSON.stringify(a.dealId)})`;
+    const checkClick = isVal ? `toggleActFromValuation('${a._valId}','${a.id}')` : `toggleActGlobal(${JSON.stringify(a.dealId)},${JSON.stringify(a.id)})`;
+    const badge = isVal ? `<span class="act-deal-badge" style="background:var(--bg-surface);border:1px solid var(--border-md);color:var(--text-2)">${a.dealName} ✦</span>` : `<span class="act-deal-badge">${a.dealName}</span>`;
+    return `<tr class="${a.done?'done':''}" data-act-id="${a.id}" onclick="${rowClick}">
       <td onclick="event.stopPropagation()">
-        <div class="act-check ${a.done?'done':''}" onclick="toggleActGlobal(${JSON.stringify(a.dealId)},${JSON.stringify(a.id)})" style="margin:0 auto"><i class="ti ti-check"></i></div>
+        <div class="act-check ${a.done?'done':''}" onclick="${checkClick}" style="margin:0 auto"><i class="ti ti-check"></i></div>
       </td>
       <td>
         <div style="font-weight:600;${a.done?'text-decoration:line-through;color:var(--text-3)':''}">${a.title}</div>
         ${a.comment?`<div style="font-size:11px;color:var(--text-3);margin-top:2px">${a.comment}</div>`:''}
       </td>
-      <td><span class="act-deal-badge">${a.dealName}</span></td>
+      <td>${badge}</td>
       <td style="font-size:12px;color:var(--text-2)">${a.owner||'<span style="color:var(--text-3)">—</span>'}</td>
       <td style="white-space:nowrap;${od?'color:#EF4444;font-weight:600':''}">${fmtDateShort(a.date)}</td>
       <td><span style="font-size:11px;font-weight:600;color:${statusColor}">${statusText}</span></td>
@@ -2151,7 +2160,10 @@ function setView(v) {
   document.getElementById('nav-users').classList.toggle('active', v==='users');
   const titles = {pipeline:'Pipeline Comercial', activities:'Atividades', valuation:'Análise de Negócio', users:'Usuários'};
   document.getElementById('page-title').textContent = titles[v]||'';
-  if (v==='activities') renderAllActivities();
+  if (v==='activities') {
+    // Carregar atividades de todos os valuation deals antes de renderizar
+    Promise.all(valuationDeals.map(v => loadValActivities(v.id))).then(() => renderAllActivities());
+  }
   if (v==='valuation') { loadValuationDeals().then(() => renderValuation()); }
   if (v==='users') {
     if (currentUserRole !== 'admin') { toast('Acesso restrito.','error'); setView('pipeline'); return; }
