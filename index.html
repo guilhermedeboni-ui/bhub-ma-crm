@@ -450,7 +450,6 @@
       </button>
       <button class="sb-nav-item" id="nav-valuation" onclick="setView('valuation')">
         <i class="ti ti-chart-bar"></i><span class="sb-label">Análise de Negócio</span>
-        <span class="sb-badge" id="val-act-badge" style="display:none"></span>
       </button>
       <button class="sb-nav-item" id="nav-activities" onclick="setView('activities')">
         <i class="ti ti-calendar-event"></i> <span>Atividades</span>
@@ -523,12 +522,7 @@
         <div id="valuation-kanban" class="valuation-kanban"></div>
       </div>
 
-      <!-- MODAL VALUATION DEAL -->
-      <div class="modal-overlay fullscreen" id="modal-valuation-deal" style="z-index:900;display:none">
-        <div style="width:100%;max-width:680px;background:var(--bg-card);border-radius:var(--radius-lg);box-shadow:0 8px 40px rgba(0,0,0,.18);overflow:hidden;margin:auto">
-          <div id="valuation-modal-content"></div>
-        </div>
-      </div>
+
 
       <div id="view-users" style="display:none">
         <div class="users-container">
@@ -759,6 +753,12 @@
 <div class="modal-overlay fullscreen" id="modal-detail">
   <div class="modal fullscreen">
     <div id="detail-modal-body" style="display:contents"></div>
+  </div>
+</div>
+
+<div class="modal-overlay fullscreen" id="modal-valuation-deal">
+  <div class="modal fullscreen">
+    <div id="valuation-modal-content" style="display:contents"></div>
   </div>
 </div>
 
@@ -2176,7 +2176,7 @@ function setView(v) {
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   // fecha o modal com z-index mais alto que estiver aberto
-  const order = ['modal-opts','modal-contact','modal-funil','modal-new','modal-detail'];
+  const order = ['modal-opts','modal-contact','modal-funil','modal-new','modal-valuation-deal','modal-detail'];
   for (const id of order) {
     const el = document.getElementById(id);
     if (el && el.classList.contains('open')) { el.classList.remove('open'); break; }
@@ -2224,9 +2224,7 @@ function updateBadges() {
   // Badge menu Atividades = pipeline + valuation
   const b = document.getElementById('act-badge');
   if (b) { const total=urgentPipeline+urgentVal; if(total>0){b.style.display='inline';b.textContent=total;}else b.style.display='none'; }
-  // Badge menu Análise de Negócio = só valuation
-  const bv = document.getElementById('val-act-badge');
-  if (bv) { if (urgentVal>0){bv.style.display='inline';bv.textContent=urgentVal;}else bv.style.display='none'; }
+
 }
 
 function render() {
@@ -2442,6 +2440,7 @@ async function addValuationActivity(valId) {
   document.getElementById('val-act-date').value = '';
   document.getElementById('val-act-list').innerHTML = renderValuationActivitiesHtml(valId);
   toast('Atividade adicionada!');
+  renderValuation();
   updateBadges();
 }
 
@@ -2549,7 +2548,7 @@ async function deleteValuationDeal(valId) {
   if (!confirm('Remover este deal da Análise de Negócio?')) return;
   await sb.from('valuation_deals').delete().eq('id', valId);
   valuationDeals = valuationDeals.filter(x => x.id !== valId);
-  document.getElementById('modal-valuation-deal').style.display = 'none';
+  document.getElementById('modal-valuation-deal').classList.remove('open');
   renderValuation();
   toast('Deal removido da análise');
 }
@@ -2587,36 +2586,45 @@ function openValuationDeal(valId) {
   // Buscar dados completos do deal original para segmento, estado, município
   const deal = deals.find(x => x.id == v.deal_id);
   document.getElementById('valuation-modal-content').innerHTML =
-    '<div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">'+
-      '<div><div style="font-size:20px;font-weight:800;color:var(--accent)">'+v.company+'</div>'+mrrHtml+'</div>'+
-      '<div style="display:flex;gap:8px;align-items:center">'+
-        '<button onclick="deleteValuationDeal(\''+v.id+'\')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:15px;padding:4px" title="Excluir"><i class="ti ti-trash"></i></button>'+
-        '<button onclick="document.getElementById(\'modal-valuation-deal\').style.display=\'none\'" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:20px"><i class="ti ti-x"></i></button>'+
-      '</div>'+
-    '</div>'+
-    '<div style="padding:12px 24px;background:var(--bg-surface);border-bottom:1px solid var(--border);display:flex;gap:24px;flex-wrap:wrap">'+
-
-      (deal&&deal.segment?'<div><div style="font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px">Segmento</div><div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">'+deal.segment+'</div></div>':'')+
-      (deal&&deal.state?'<div><div style="font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px">Estado</div><div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">'+deal.state+'</div></div>':'')+
-      (deal&&deal.city?'<div><div style="font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px">Município</div><div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">'+deal.city+'</div></div>':'')+
-    '</div>'+
-    '<div style="padding:20px 24px">'+
-      '<div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Etapa de Análise</div>'+
-      '<select onchange="updateValuationStage(\''+v.id+'\',this.value)" style="font-family:var(--font);font-size:13px;padding:8px 12px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg-card);color:var(--text);width:100%;margin-bottom:20px">'+stageOpts+'</select>'+
-      '<div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Checklist</div>'+
-      '<div style="display:flex;flex-direction:column;gap:10px">'+checksHtml+'</div>'+
-      '<div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">'+
-        '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px"><i class="ti ti-calendar-event" style="font-size:14px"></i> Atividades</div>'+
-        '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'+
-          '<input id="val-act-title" placeholder="Título da atividade" style="flex:1;min-width:180px;font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:7px 10px;background:var(--bg-card);color:var(--text)"/>'+
-          '<input id="val-act-date" type="date" onclick="this.showPicker&&this.showPicker()" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:7px 10px;background:var(--bg-card);color:var(--text);cursor:pointer"/>'+
-          '<button onclick="addValuationActivity(\''+v.id+'\')" class="btn-add" style="white-space:nowrap"><i class="ti ti-plus"></i> Adicionar</button>'+
+    // Header com botão voltar
+    '<button class="modal-close" onclick="document.getElementById(\'modal-valuation-deal\').classList.remove(\'open\')" style="flex-shrink:0;margin-top:4px"><i class="ti ti-arrow-left"></i></button>'+
+    '<div style="flex:1;display:flex;overflow:hidden">'+
+      '<div class="deal-sidebar">'+
+        '<div style="margin-bottom:4px">'+
+          '<div class="sidebar-section-title">Etapa de Análise</div>'+
+          '<select onchange="updateValuationStage(\''+v.id+'\',this.value)" style="font-family:var(--font);font-size:13px;padding:8px 10px;border:1px solid var(--border-md);border-radius:var(--radius);background:var(--bg-card);color:var(--text);width:100%">'+stageOpts+'</select>'+
         '</div>'+
-        '<div id="val-act-list"><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>'+
-        '<div id="val-hist-list" style="margin-top:16px"></div>'+
+        '<div style="padding-top:12px;border-top:1px solid var(--border)">'+
+          '<div class="sidebar-section-title">Checklist</div>'+
+          '<div style="display:flex;flex-direction:column;gap:8px">'+checksHtml+'</div>'+
+        '</div>'+
+        (deal?'<div style="padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px">'+
+          (deal.segment?'<div><div class="detail-label">Segmento</div><div class="detail-val">'+deal.segment+'</div></div>':'')+
+          (deal.state?'<div><div class="detail-label">Estado</div><div class="detail-val">'+deal.state+'</div></div>':'')+
+          (deal.city?'<div><div class="detail-label">Município</div><div class="detail-val">'+deal.city+'</div></div>':'')+
+        '</div>':'')+
+        '<div style="padding-top:8px;border-top:1px solid var(--border)">'+
+          '<button onclick="deleteValuationDeal(\''+v.id+'\')" class="btn-danger"><i class="ti ti-trash"></i> Remover da análise</button>'+
+        '</div>'+
+      '</div>'+
+      '<div class="deal-main-scroll">'+
+        '<div style="text-align:center;margin-bottom:24px">'+
+          '<div style="font-size:22px;font-weight:800;color:var(--accent)">'+v.company+'</div>'+
+          (v.mrr?'<div style="font-size:16px;font-weight:700;color:var(--text);margin-top:4px">'+fmtMrr(v.mrr)+' MRR</div>':'')+
+        '</div>'+
+        '<div>'+
+          '<div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px"><i class="ti ti-calendar-event"></i> Atividades</div>'+
+          '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'+
+            '<input id="val-act-title" placeholder="Título da atividade" style="flex:1;min-width:180px;font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:7px 10px;background:var(--bg-card);color:var(--text)"/>'+
+            '<input id="val-act-date" type="date" onclick="this.showPicker&&this.showPicker()" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:7px 10px;background:var(--bg-card);color:var(--text);cursor:pointer"/>'+
+            '<button onclick="addValuationActivity(\''+v.id+'\')" class="btn-add" style="white-space:nowrap"><i class="ti ti-plus"></i> Adicionar</button>'+
+          '</div>'+
+          '<div id="val-act-list"><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>'+
+          '<div id="val-hist-list" style="margin-top:16px"></div>'+
+        '</div>'+
       '</div>'+
     '</div>';
-  document.getElementById('modal-valuation-deal').style.display = 'flex';
+  document.getElementById('modal-valuation-deal').classList.add('open');
   // Carregar atividades da tabela própria
   loadValActivities(v.id).then(() => {
     const el = document.getElementById('val-act-list');
