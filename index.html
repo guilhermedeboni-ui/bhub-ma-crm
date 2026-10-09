@@ -2354,47 +2354,60 @@ async function updateValuationStage(valId, stage) {
   toast('Etapa atualizada');
 }
 
-function renderValuationActivities(dealId) {
-  const d = deals.find(x => x.id == dealId); if(!d) return '<p style="font-size:13px;color:var(--text-3)">Nenhuma atividade.</p>';
-  const acts = (d.activities||[]).filter(a => !a.done);
+let valActivitiesCache = {};
+
+async function loadValActivities(valId) {
+  const { data } = await sb.from('valuation_activities').select('*').eq('valuation_deal_id', valId).order('created_at');
+  valActivitiesCache[valId] = data || [];
+  return valActivitiesCache[valId];
+}
+
+function renderValuationActivitiesHtml(valId) {
+  const acts = (valActivitiesCache[valId]||[]).filter(a => !a.done);
   if (!acts.length) return '<p style="font-size:13px;color:var(--text-3)">Nenhuma atividade pendente.</p>';
   return acts.map(a => {
     const dateStr = a.date ? new Date(a.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}) : '';
     return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg-surface);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:6px">'+
-      '<input type="checkbox" onchange="toggleActFromValuation(\''+dealId+'\',\''+a.id+'\')" style="cursor:pointer;width:16px;height:16px;flex-shrink:0"/>'+
+      '<input type="checkbox" onchange="toggleActFromValuation(\''+valId+'\',\''+a.id+'\')" style="cursor:pointer;width:16px;height:16px;flex-shrink:0"/>'+
       '<div style="flex:1"><div style="font-size:13px;color:var(--text)">'+a.title+'</div>'+
         (dateStr?'<div style="font-size:11px;color:var(--text-3)">'+dateStr+'</div>':'')+
       '</div>'+
+      '<button onclick="deleteValAct(\''+valId+'\',\''+a.id+'\')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:13px;padding:2px"><i class="ti ti-trash"></i></button>'+
     '</div>';
   }).join('');
 }
 
-async function addValuationActivity(dealId) {
+async function addValuationActivity(valId) {
   const title = document.getElementById('val-act-title')?.value.trim();
   const date = document.getElementById('val-act-date')?.value;
   if (!title) { toast('Informe o título da atividade.','error'); return; }
-  const d = deals.find(x => x.id == dealId); if(!d)return;
-  if (!d.activities) d.activities = [];
   const author = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
-  d.activities.push({ id: Date.now().toString(), title, date: date||'', owner: author, done: false });
-  await saveDeal(d);
+  const { data, error } = await sb.from('valuation_activities').insert({
+    valuation_deal_id: valId, title, date: date||null, owner: author, done: false
+  }).select().single();
+  if (error) { toast('Erro ao adicionar atividade.','error'); return; }
+  if (!valActivitiesCache[valId]) valActivitiesCache[valId] = [];
+  valActivitiesCache[valId].push(data);
   document.getElementById('val-act-title').value = '';
   document.getElementById('val-act-date').value = '';
-  document.getElementById('val-act-list').innerHTML = renderValuationActivities(dealId);
+  document.getElementById('val-act-list').innerHTML = renderValuationActivitiesHtml(valId);
   toast('Atividade adicionada!');
-  // Atualizar badge de atividades
-  render();
 }
 
-async function toggleActFromValuation(dealId, actId) {
-  const d = deals.find(x => x.id == dealId); if(!d)return;
-  const a = d.activities.find(x => x.id === actId); if(!a)return;
+async function toggleActFromValuation(valId, actId) {
+  if (!valActivitiesCache[valId]) return;
+  const a = valActivitiesCache[valId].find(x => x.id === actId); if(!a)return;
   a.done = true;
-  a.doneAt = new Date().toISOString();
-  await saveDeal(d);
-  document.getElementById('val-act-list').innerHTML = renderValuationActivities(dealId);
+  a.done_at = new Date().toISOString();
+  await sb.from('valuation_activities').update({ done: true, done_at: a.done_at }).eq('id', actId);
+  document.getElementById('val-act-list').innerHTML = renderValuationActivitiesHtml(valId);
   toast('Atividade concluída!');
-  render();
+}
+
+async function deleteValAct(valId, actId) {
+  await sb.from('valuation_activities').delete().eq('id', actId);
+  valActivitiesCache[valId] = (valActivitiesCache[valId]||[]).filter(x => x.id !== actId);
+  document.getElementById('val-act-list').innerHTML = renderValuationActivitiesHtml(valId);
 }
 
 async function deleteValuationDeal(valId) {
@@ -2462,12 +2475,17 @@ function openValuationDeal(valId) {
         '<div style="display:flex;gap:8px;margin-bottom:12px">'+
           '<input id="val-act-title" placeholder="Título da atividade" style="flex:1;font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:8px 10px;background:var(--bg-card);color:var(--text)"/>'+
           '<input id="val-act-date" type="date" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:8px 10px;background:var(--bg-card);color:var(--text)"/>'+
-          '<button onclick="addValuationActivity(\''+v.deal_id+'\')" class="btn-primary" style="white-space:nowrap;font-size:13px">+ Adicionar</button>'+
+          '<button onclick="addValuationActivity(\''+v.id+'\')" class="btn-primary" style="white-space:nowrap;font-size:13px">+ Adicionar</button>'+
         '</div>'+
-        '<div id="val-act-list">'+renderValuationActivities(v.deal_id)+'</div>'+
+        '<div id="val-act-list"><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>'+
       '</div>'+
     '</div>';
   document.getElementById('modal-valuation-deal').style.display = 'flex';
+  // Carregar atividades da tabela própria
+  loadValActivities(v.id).then(() => {
+    const el = document.getElementById('val-act-list');
+    if (el) el.innerHTML = renderValuationActivitiesHtml(v.id);
+  });
 }
 
 function renderValuation() {
