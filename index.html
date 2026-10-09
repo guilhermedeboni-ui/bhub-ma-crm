@@ -2363,16 +2363,25 @@ async function loadValActivities(valId) {
 }
 
 function renderValuationActivitiesHtml(valId) {
-  const acts = (valActivitiesCache[valId]||[]).filter(a => !a.done);
+  const acts = (valActivitiesCache[valId]||[]).filter(a => !a.done).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   if (!acts.length) return '<p style="font-size:13px;color:var(--text-3)">Nenhuma atividade pendente.</p>';
   return acts.map(a => {
-    const dateStr = a.date ? new Date(a.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}) : '';
-    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg-surface);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:6px">'+
-      '<input type="checkbox" onchange="toggleActFromValuation(\''+valId+'\',\''+a.id+'\')" style="cursor:pointer;width:16px;height:16px;flex-shrink:0"/>'+
-      '<div style="flex:1"><div style="font-size:13px;color:var(--text)">'+a.title+'</div>'+
-        (dateStr?'<div style="font-size:11px;color:var(--text-3)">'+dateStr+'</div>':'')+
+    const od = !a.done && isOverdue(a.date);
+    const commentHtml = a.comment ?
+      '<div style="font-size:12px;color:var(--text-2);margin-top:4px;background:var(--bg-card);border-radius:5px;padding:6px 8px;border:1px solid var(--border-md);white-space:pre-wrap;cursor:pointer" onclick="toggleValActComment(\''+valId+'\',\''+a.id+'\',this)" title="Clique para editar">'+a.comment+' <i class="ti ti-pencil" style="font-size:10px;color:var(--text-3);vertical-align:middle"></i></div>' : '';
+    return '<div class="act-item" data-val-act-id="'+a.id+'">'+
+      '<div class="act-check" onclick="toggleActFromValuation(\''+valId+'\',\''+a.id+'\')"><i class="ti ti-check"></i></div>'+
+      '<div style="flex:1">'+
+        '<div class="act-title-txt">'+a.title+'</div>'+
+        '<div class="act-meta"><span '+(od?'class="overdue"':'')+'>'+fmtDate(a.date)+'</span>'+(od?' · <span class="overdue">VENCIDA</span>':'')+(a.owner?' · <span style="color:var(--text-3)">'+a.owner+'</span>':'')+
+        '</div>'+
+        commentHtml+
       '</div>'+
-      '<button onclick="deleteValAct(\''+valId+'\',\''+a.id+'\')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:13px;padding:2px"><i class="ti ti-trash"></i></button>'+
+      '<div style="display:flex;gap:2px">'+
+        '<button onclick="toggleValActComment(\''+valId+'\',\''+a.id+'\',this)" style="background:none;border:none;cursor:pointer;color:'+(a.comment?'var(--accent)':'var(--text-3)')+';font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="'+(a.comment?'Editar comentário':'Adicionar comentário')+'"><i class="ti ti-message"></i></button>'+
+        '<button onclick="editValAct(\''+valId+'\',\''+a.id+'\',this)" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="Editar"><i class="ti ti-pencil"></i></button>'+
+        '<button onclick="deleteValAct(\''+valId+'\',\''+a.id+'\')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="Excluir"><i class="ti ti-trash"></i></button>'+
+      '</div>'+
     '</div>';
   }).join('');
 }
@@ -2408,6 +2417,71 @@ async function deleteValAct(valId, actId) {
   await sb.from('valuation_activities').delete().eq('id', actId);
   valActivitiesCache[valId] = (valActivitiesCache[valId]||[]).filter(x => x.id !== actId);
   document.getElementById('val-act-list').innerHTML = renderValuationActivitiesHtml(valId);
+}
+
+function editValAct(valId, actId, triggerBtn) {
+  const a = (valActivitiesCache[valId]||[]).find(x => x.id === actId); if(!a)return;
+  document.querySelectorAll('.val-act-edit-popover').forEach(el=>el.remove());
+  const pop = document.createElement('div');
+  pop.className = 'val-act-edit-popover';
+  const rect = triggerBtn.getBoundingClientRect();
+  pop.style.cssText = 'position:fixed;top:'+(rect.bottom+6)+'px;left:'+Math.min(rect.left, window.innerWidth-380)+'px;width:360px;z-index:2000;background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--radius-lg);box-shadow:0 8px 24px rgba(0,0,0,.18);padding:12px;display:flex;flex-direction:column;gap:8px;';
+  const titleInp = document.createElement('input');
+  titleInp.value = a.title;
+  titleInp.style.cssText = 'font-size:13px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);outline:none;width:100%;background:var(--bg-surface);color:var(--text);font-family:var(--font)';
+  const dateInp = document.createElement('input');
+  dateInp.type = 'date'; dateInp.value = a.date||'';
+  dateInp.style.cssText = 'font-size:13px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);outline:none;width:100%;background:var(--bg-surface);color:var(--text);font-family:var(--font);cursor:pointer';
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:7px;justify-content:flex-end';
+  const btnCancel = document.createElement('button');
+  btnCancel.textContent = 'Cancelar';
+  btnCancel.style.cssText = 'background:none;border:1px solid var(--border-md);color:var(--text-2);font-size:12px;font-weight:600;font-family:var(--font);padding:6px 14px;border-radius:var(--radius);cursor:pointer';
+  btnCancel.onclick = () => pop.remove();
+  const btnSave = document.createElement('button');
+  btnSave.textContent = 'Salvar';
+  btnSave.style.cssText = 'background:var(--accent);border:none;color:#fff;font-size:12px;font-weight:600;font-family:var(--font);padding:6px 14px;border-radius:var(--radius);cursor:pointer';
+  btnSave.onclick = async () => {
+    a.title = titleInp.value.trim() || a.title;
+    a.date = dateInp.value || a.date;
+    await sb.from('valuation_activities').update({ title: a.title, date: a.date||null }).eq('id', actId);
+    pop.remove();
+    document.getElementById('val-act-list').innerHTML = renderValuationActivitiesHtml(valId);
+    toast('Atividade atualizada');
+  };
+  btnRow.appendChild(btnCancel); btnRow.appendChild(btnSave);
+  pop.appendChild(titleInp); pop.appendChild(dateInp); pop.appendChild(btnRow);
+  document.body.appendChild(pop);
+  titleInp.focus();
+  setTimeout(() => {
+    document.addEventListener('mousedown', function h(e) { if(!pop.contains(e.target)&&e.target!==triggerBtn){pop.remove();document.removeEventListener('mousedown',h);} });
+  }, 10);
+}
+
+function toggleValActComment(valId, actId, triggerEl) {
+  document.querySelectorAll('.act-comment-popover').forEach(el=>el.remove());
+  const a = (valActivitiesCache[valId]||[]).find(x => x.id === actId); if(!a)return;
+  const pop = document.createElement('div');
+  pop.className = 'act-comment-popover';
+  const rect = triggerEl.getBoundingClientRect();
+  const topPos = rect.bottom + 6;
+  const leftPos = Math.min(rect.left, window.innerWidth - 500);
+  pop.style.cssText = 'position:fixed;top:'+topPos+'px;left:'+Math.max(8,leftPos)+'px;width:480px;z-index:2000;background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--radius-lg);box-shadow:0 8px 24px rgba(0,0,0,.18);padding:10px;display:flex;flex-direction:column;gap:8px;';
+  pop.innerHTML = '<div style="display:flex;gap:6px;align-items:flex-end"><textarea id="val-comment-inp-'+actId+'" placeholder="Adicione um comentário..." style="flex:1;min-height:100px;max-height:260px;font-size:13px;padding:8px 10px;resize:vertical;overflow-y:auto;font-family:var(--font);background:var(--bg-surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text)">'+
+    (a.comment||'')+'</textarea><button class="act-comment-save-btn" style="background:var(--accent);border:none;color:#fff;font-size:11px;font-weight:600;font-family:var(--font);padding:7px 12px;border-radius:var(--radius);cursor:pointer;white-space:nowrap;align-self:flex-end">Salvar</button></div>';
+  document.body.appendChild(pop);
+  const inp = pop.querySelector('#val-comment-inp-'+actId);
+  inp.focus();
+  pop.querySelector('.act-comment-save-btn').addEventListener('click', async () => {
+    a.comment = inp.value.trim();
+    await sb.from('valuation_activities').update({ comment: a.comment||null }).eq('id', actId);
+    pop.remove();
+    document.getElementById('val-act-list').innerHTML = renderValuationActivitiesHtml(valId);
+    toast('Comentário salvo!');
+  });
+  setTimeout(() => {
+    document.addEventListener('mousedown', function h(e) { if(!pop.contains(e.target)&&e.target!==triggerEl){pop.remove();document.removeEventListener('mousedown',h);} });
+  }, 10);
 }
 
 async function deleteValuationDeal(valId) {
@@ -2471,11 +2545,11 @@ function openValuationDeal(valId) {
       '<div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Checklist</div>'+
       '<div style="display:flex;flex-direction:column;gap:10px">'+checksHtml+'</div>'+
       '<div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">'+
-        '<div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Atividades</div>'+
-        '<div style="display:flex;gap:8px;margin-bottom:12px">'+
-          '<input id="val-act-title" placeholder="Título da atividade" style="flex:1;font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:8px 10px;background:var(--bg-card);color:var(--text)"/>'+
-          '<input id="val-act-date" type="date" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:8px 10px;background:var(--bg-card);color:var(--text)"/>'+
-          '<button onclick="addValuationActivity(\''+v.id+'\')" class="btn-primary" style="white-space:nowrap;font-size:13px">+ Adicionar</button>'+
+        '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px"><i class="ti ti-calendar-event" style="font-size:14px"></i> Atividades</div>'+
+        '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'+
+          '<input id="val-act-title" placeholder="Título da atividade" style="flex:1;min-width:180px;font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:7px 10px;background:var(--bg-card);color:var(--text)"/>'+
+          '<input id="val-act-date" type="date" onclick="this.showPicker&&this.showPicker()" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:7px 10px;background:var(--bg-card);color:var(--text);cursor:pointer"/>'+
+          '<button onclick="addValuationActivity(\''+v.id+'\')" class="btn-add" style="white-space:nowrap"><i class="ti ti-plus"></i> Adicionar</button>'+
         '</div>'+
         '<div id="val-act-list"><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>'+
       '</div>'+
