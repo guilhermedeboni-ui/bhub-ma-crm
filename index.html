@@ -450,6 +450,7 @@
       </button>
       <button class="sb-nav-item" id="nav-valuation" onclick="setView('valuation')">
         <i class="ti ti-chart-bar"></i><span class="sb-label">Análise de Negócio</span>
+        <span class="sb-badge" id="val-act-badge" style="display:none"></span>
       </button>
       <button class="sb-nav-item" id="nav-activities" onclick="setView('activities')">
         <i class="ti ti-calendar-event"></i> <span>Atividades</span>
@@ -2213,13 +2214,22 @@ async function duplicateDeal(id) {
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
-function render() {
-  renderKanban();
+function updateBadges() {
   const today = todayLocal();
   const myName = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
-  const urgentActs = deals.reduce((s,d)=>s+d.activities.filter(a=>!a.done&&a.date&&a.date<=today&&(!a.owner||a.owner===myName)).length, 0);
+  // Badge pipeline
+  const urgentPipeline = deals.reduce((s,d)=>s+d.activities.filter(a=>!a.done&&a.date&&a.date<=today&&(!a.owner||a.owner===myName)).length, 0);
   const b = document.getElementById('act-badge');
-  if (urgentActs>0) { b.style.display='inline'; b.textContent=urgentActs; } else b.style.display='none';
+  if (b) { if (urgentPipeline>0){b.style.display='inline';b.textContent=urgentPipeline;}else b.style.display='none'; }
+  // Badge valuation
+  const urgentVal = Object.values(valActivitiesCache).reduce((s,acts)=>s+acts.filter(a=>!a.done&&a.date&&a.date<=today&&(!a.owner||a.owner===myName)).length, 0);
+  const bv = document.getElementById('val-act-badge');
+  if (bv) { if (urgentVal>0){bv.style.display='inline';bv.textContent=urgentVal;}else bv.style.display='none'; }
+}
+
+function render() {
+  renderKanban();
+  updateBadges();
 }
 
 document.querySelectorAll('.modal-overlay').forEach(m => {
@@ -2284,6 +2294,8 @@ async function showApp() {
   await loadCurrentUserRole();
   await loadDeals();
   await loadValuationDeals();
+  await Promise.all(valuationDeals.map(v => loadValActivities(v.id)));
+  updateBadges();
   await migrateDoneActivities();
 }
 
@@ -2413,22 +2425,38 @@ async function addValuationActivity(valId) {
   document.getElementById('val-act-date').value = '';
   document.getElementById('val-act-list').innerHTML = renderValuationActivitiesHtml(valId);
   toast('Atividade adicionada!');
+  updateBadges();
 }
 
 async function toggleActFromValuation(valId, actId) {
   if (!valActivitiesCache[valId]) return;
   const a = valActivitiesCache[valId].find(x => x.id === actId); if(!a)return;
-  a.done = true;
-  a.done_at = new Date().toISOString();
-  await sb.from('valuation_activities').update({ done: true, done_at: a.done_at }).eq('id', actId);
-  document.getElementById('val-act-list').innerHTML = renderValuationActivitiesHtml(valId);
-  toast('Atividade concluída!');
+  a.done = !a.done;
+  a.done_at = a.done ? new Date().toISOString() : null;
+  await sb.from('valuation_activities').update({ done: a.done, done_at: a.done_at }).eq('id', actId);
+  // Atualizar modal se aberto
+  const valList = document.getElementById('val-act-list');
+  if (valList) valList.innerHTML = renderValuationActivitiesHtml(valId);
+  // Atualizar menu Atividades se aberto
+  const actView = document.getElementById('view-activities');
+  if (actView && actView.style.display !== 'none') {
+    const tr = document.querySelector('tr[data-act-id="'+String(actId)+'"]');
+    const showDone = document.getElementById('show-done-acts')?.checked;
+    if (tr && a.done && !showDone) { tr.style.transition='opacity .15s'; tr.style.opacity='0'; setTimeout(()=>tr.remove(),150); }
+    else renderAllActivities();
+  }
+  toast(a.done ? 'Atividade concluída!' : 'Atividade reaberta!');
+  updateBadges();
 }
 
 async function deleteValAct(valId, actId) {
   await sb.from('valuation_activities').delete().eq('id', actId);
   valActivitiesCache[valId] = (valActivitiesCache[valId]||[]).filter(x => x.id !== actId);
-  document.getElementById('val-act-list').innerHTML = renderValuationActivitiesHtml(valId);
+  const valList = document.getElementById('val-act-list');
+  if (valList) valList.innerHTML = renderValuationActivitiesHtml(valId);
+  const actView = document.getElementById('view-activities');
+  if (actView && actView.style.display !== 'none') renderAllActivities();
+  updateBadges();
 }
 
 function editValAct(valId, actId, triggerBtn) {
