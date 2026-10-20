@@ -451,6 +451,9 @@
       <button class="sb-nav-item" id="nav-valuation" onclick="setView('valuation')">
         <i class="ti ti-chart-bar"></i><span class="sb-label">Análise de Negócio</span>
       </button>
+      <button class="sb-nav-item" id="nav-diligence" onclick="setView('diligence')">
+        <i class="ti ti-file-search"></i><span class="sb-label">Diligência</span>
+      </button>
       <button class="sb-nav-item" id="nav-activities" onclick="setView('activities')">
         <i class="ti ti-calendar-event"></i> <span>Atividades</span>
         <span class="sb-badge" id="act-badge" style="display:none"></span>
@@ -512,6 +515,22 @@
       </div>
 
       <!-- USERS VIEW -->
+      <div id="view-diligence" class="view-valuation-wrap" style="display:none">
+        <div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:18px;font-weight:700;color:var(--text)">Diligência</div>
+            <div style="font-size:13px;color:var(--text-3);margin-top:2px">Deals em processo de diligência</div>
+          </div>
+        </div>
+        <div id="diligence-kanban" class="valuation-kanban"></div>
+      </div>
+
+      <div class="modal-overlay fullscreen" id="modal-diligence-deal">
+        <div class="modal fullscreen">
+          <div id="diligence-modal-content" style="display:contents"></div>
+        </div>
+      </div>
+
       <div id="view-valuation" class="view-valuation-wrap" style="display:none">
         <div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
           <div>
@@ -1295,7 +1314,7 @@ function renderKanban(){
     kb.appendChild(lane);
     const body=lane.querySelector('.lane-body');
     // Drop aceito tanto no body quanto no lane inteiro (header excluído)
-    const dropHandler = async e=>{e.preventDefault();body.classList.remove('drag-over');lane.classList.remove('drag-over');if(!draggedDealId)return;const d=deals.find(x=>x.id===draggedDealId);if(!d||d.stage===stage)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Etapa alterada para "'+stage+'".'});d.stage=stage;saveDeal(d);toast('Etapa atualizada');render();if(VALUATION_TRIGGER_STAGES.includes(stage)){syncValuationDeal(d);}};
+    const dropHandler = async e=>{e.preventDefault();body.classList.remove('drag-over');lane.classList.remove('drag-over');if(!draggedDealId)return;const d=deals.find(x=>x.id===draggedDealId);if(!d||d.stage===stage)return;d.history.push({date:new Date().toLocaleString('pt-BR'),type:'Nota',text:'Etapa alterada para "'+stage+'".'});d.stage=stage;saveDeal(d);toast('Etapa atualizada');render();if(VALUATION_TRIGGER_STAGES.includes(stage)){syncValuationDeal(d);}if(DILIGENCE_TRIGGER_STAGES.includes(stage)){syncDiligenceDeal(d);}};
     const overHandler = e=>{e.preventDefault();body.classList.add('drag-over');};
     const leaveHandler = e=>{if(!lane.contains(e.relatedTarget)){body.classList.remove('drag-over');}};
     body.addEventListener('dragover', overHandler);
@@ -1384,10 +1403,13 @@ function renderAllActivities(){
   const myActsName = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
   let all=[];
   deals.forEach(d=>d.activities.forEach(a=>all.push({...a,dealId:d.id,dealName:d.company,_source:'pipeline'})));
-  // Incluir atividades do valuation
   Object.entries(valActivitiesCache).forEach(([valId, acts]) => {
     const v = valuationDeals.find(x => x.id === valId);
     acts.forEach(a => all.push({...a, dealId: null, _valId: valId, dealName: (v?v.company:'Análise de Negócio'), _source:'valuation'}));
+  });
+  Object.entries(dilActivitiesCache).forEach(([dilId, acts]) => {
+    const v = diligenceDeals.find(x => x.id === dilId);
+    acts.forEach(a => all.push({...a, dealId: null, _dilId: dilId, dealName: (v?v.company:'Diligência'), _source:'diligence'}));
   });
   if (!showDone) all = all.filter(a => !a.done);
   if (showMine) all = all.filter(a => !a.owner || a.owner === myActsName);
@@ -1405,9 +1427,10 @@ function renderAllActivities(){
     const statusColor = od?'#EF4444':isToday?'#22C55E':a.done?'#22C55E':'var(--text-3)';
     const statusText = a.done?'Concluída':od?'Vencida':isToday?'Hoje':'Pendente';
     const isVal = a._source === 'valuation';
-    const rowClick = isVal ? `openValuationDeal('${a._valId}')` : `openDeal(${JSON.stringify(a.dealId)})`;
-    const checkClick = isVal ? `toggleActFromValuation('${a._valId}','${a.id}')` : `toggleActGlobal(${JSON.stringify(a.dealId)},${JSON.stringify(a.id)})`;
-    const badge = isVal ? `<span class="act-deal-badge" style="background:var(--bg-surface);border:1px solid var(--border-md);color:var(--text-2)">${a.dealName} ✦</span>` : `<span class="act-deal-badge">${a.dealName}</span>`;
+    const isDil = a._source === 'diligence';
+    const rowClick = isVal ? `openValuationDeal('${a._valId}')` : isDil ? `openDiligenceDeal('${a._dilId}')` : `openDeal(${JSON.stringify(a.dealId)})`;
+    const checkClick = isVal ? `toggleActFromValuation('${a._valId}','${a.id}')` : isDil ? `toggleActFromDiligence('${a._dilId}','${a.id}')` : `toggleActGlobal(${JSON.stringify(a.dealId)},${JSON.stringify(a.id)})`;
+    const badge = (isVal||isDil) ? `<span class="act-deal-badge" style="background:var(--bg-surface);border:1px solid var(--border-md);color:var(--text-2)">${a.dealName} ${isDil?'◆':'✦'}</span>` : `<span class="act-deal-badge">${a.dealName}</span>`;
     return `<tr class="${a.done?'done':''}" data-act-id="${a.id}" onclick="${rowClick}">
       <td onclick="event.stopPropagation()">
         <div class="act-check ${a.done?'done':''}" onclick="${checkClick}" style="margin:0 auto"><i class="ti ti-check"></i></div>
@@ -2154,18 +2177,23 @@ function setView(v) {
   document.getElementById('view-pipeline').style.display = v==='pipeline' ? 'block' : 'none';
   document.getElementById('view-activities').style.display = v==='activities' ? 'block' : 'none';
   document.getElementById('view-valuation').style.display = v==='valuation' ? 'block' : 'none';
+  document.getElementById('view-diligence').style.display = v==='diligence' ? 'block' : 'none';
   document.getElementById('view-users').style.display = v==='users' ? 'block' : 'none';
   document.getElementById('nav-pipeline').classList.toggle('active', v==='pipeline');
   document.getElementById('nav-activities').classList.toggle('active', v==='activities');
   document.getElementById('nav-valuation').classList.toggle('active', v==='valuation');
+  document.getElementById('nav-diligence').classList.toggle('active', v==='diligence');
   document.getElementById('nav-users').classList.toggle('active', v==='users');
-  const titles = {pipeline:'Pipeline Comercial', activities:'Atividades', valuation:'Análise de Negócio', users:'Usuários'};
+  const titles = {pipeline:'Pipeline Comercial', activities:'Atividades', valuation:'Análise de Negócio', diligence:'Diligência', users:'Usuários'};
   document.getElementById('page-title').textContent = titles[v]||'';
   if (v==='activities') {
-    // Carregar atividades de todos os valuation deals antes de renderizar
-    Promise.all(valuationDeals.map(v => loadValActivities(v.id))).then(() => renderAllActivities());
+    Promise.all([
+      ...valuationDeals.map(v => loadValActivities(v.id)),
+      ...diligenceDeals.map(v => loadDilActivities(v.id))
+    ]).then(() => renderAllActivities());
   }
   if (v==='valuation') { loadValuationDeals().then(() => renderValuation()); }
+  if (v==='diligence') { loadDiligenceDeals().then(() => renderDiligence()); }
   if (v==='users') {
     if (currentUserRole !== 'admin') { toast('Acesso restrito.','error'); setView('pipeline'); return; }
     loadUsersView();
@@ -2176,7 +2204,7 @@ function setView(v) {
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   // fecha o modal com z-index mais alto que estiver aberto
-  const order = ['modal-opts','modal-contact','modal-funil','modal-new','modal-valuation-deal','modal-detail'];
+  const order = ['modal-opts','modal-contact','modal-funil','modal-new','modal-valuation-deal','modal-diligence-deal','modal-detail'];
   for (const id of order) {
     const el = document.getElementById(id);
     if (el && el.classList.contains('open')) { el.classList.remove('open'); break; }
@@ -2217,13 +2245,11 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 function updateBadges() {
   const today = todayLocal();
   const myName = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
-  // Badge pipeline
   const urgentPipeline = deals.reduce((s,d)=>s+d.activities.filter(a=>!a.done&&a.date&&a.date<=today&&(!a.owner||a.owner===myName)).length, 0);
-  // Badge valuation
   const urgentVal = Object.values(valActivitiesCache).reduce((s,acts)=>s+acts.filter(a=>!a.done&&a.date&&a.date<=today&&(!a.owner||a.owner===myName)).length, 0);
-  // Badge menu Atividades = pipeline + valuation
+  const urgentDil = Object.values(dilActivitiesCache).reduce((s,acts)=>s+acts.filter(a=>!a.done&&a.date&&a.date<=today&&(!a.owner||a.owner===myName)).length, 0);
   const b = document.getElementById('act-badge');
-  if (b) { const total=urgentPipeline+urgentVal; if(total>0){b.style.display='inline';b.textContent=total;}else b.style.display='none'; }
+  if (b) { const total=urgentPipeline+urgentVal+urgentDil; if(total>0){b.style.display='inline';b.textContent=total;}else b.style.display='none'; }
 
 }
 
@@ -2295,6 +2321,8 @@ async function showApp() {
   await loadDeals();
   await loadValuationDeals();
   await Promise.all(valuationDeals.map(v => loadValActivities(v.id)));
+  await loadDiligenceDeals();
+  await Promise.all(diligenceDeals.map(v => loadDilActivities(v.id)));
   updateBadges();
   await migrateDoneActivities();
 }
@@ -2762,6 +2790,293 @@ function renderValuation() {
   });
 }
 
+
+
+// ── DILIGÊNCIA ──
+const DILIGENCE_STAGES = [
+  'Aguardando envio das informações',
+  'Informações recebidas parcialmente',
+  'Primeira análise',
+  'Envio do Q&A',
+  'Retorno do Q&A',
+  'Segunda análise',
+  'Deliberação comitê'
+];
+const DILIGENCE_COLORS = [
+  { bg: '#FEF3C7', bd: '#F59E0B', text: '#92400E' },
+  { bg: '#DBEAFE', bd: '#3B82F6', text: '#1E40AF' },
+  { bg: '#EDE9FE', bd: '#8B5CF6', text: '#5B21B6' },
+  { bg: '#FCE7F3', bd: '#EC4899', text: '#9D174D' },
+  { bg: '#D1FAE5', bd: '#10B981', text: '#065F46' },
+  { bg: '#FEE2E2', bd: '#EF4444', text: '#991B1B' },
+  { bg: '#F3F4F6', bd: '#6B7280', text: '#374151' }
+];
+const DILIGENCE_TRIGGER_STAGES = ['Diligência'];
+const DILIGENCE_CHECKLIST = [
+  { field: 'check_lista_clientes',   label: 'Template \u2013 Lista de Clientes' },
+  { field: 'check_cert_digital',     label: 'Certificado Digital' },
+  { field: 'check_prefeituras',      label: 'Login e senha das prefeituras ou relatório em XLS' },
+  { field: 'check_contas_receber',   label: 'Contas a Receber em XLS' },
+  { field: 'check_questionamentos',  label: 'Questionamentos do Parceiro' },
+  { field: 'check_inadimplencia',    label: 'Inadimplência dos últimos 12 meses' },
+  { field: 'check_churn',            label: 'Churn dos últimos 12 meses' },
+  { field: 'check_folha_pagamento',  label: 'Template de Folha de Pagamento xls e Ficha de Empregado em PDF' },
+  { field: 'check_despesas',         label: 'Template de Despesas' },
+  { field: 'check_dre',              label: 'DRE Analítica Atualizada e Balancete' },
+  { field: 'check_contrato_cliente', label: 'Contrato com cliente' }
+];
+let diligenceDeals = [];
+let dilDragId = null;
+let dilActivitiesCache = {};
+
+async function loadDiligenceDeals() {
+  const { data, error } = await sb.from('diligence_deals').select('*').order('created_at');
+  if (error) { console.error('Diligence load error:', error); return; }
+  diligenceDeals = data || [];
+}
+async function loadDilActivities(dilId) {
+  const { data } = await sb.from('diligence_activities').select('*').eq('diligence_deal_id', dilId).order('created_at');
+  dilActivitiesCache[dilId] = data || [];
+  return dilActivitiesCache[dilId];
+}
+async function syncDiligenceDeal(deal) {
+  const { data } = await sb.from('diligence_deals').select('id').eq('deal_id', deal.id).maybeSingle();
+  if (data) {
+    await sb.from('diligence_deals').update({ company: deal.company, mrr: deal.mrr||0, owner: deal.owner||'', pipeline_stage: deal.stage, updated_at: new Date().toISOString() }).eq('deal_id', deal.id);
+  } else {
+    const { data: nr } = await sb.from('diligence_deals').insert({ deal_id: deal.id, company: deal.company, mrr: deal.mrr||0, owner: deal.owner||'', pipeline_stage: deal.stage, diligence_stage: DILIGENCE_STAGES[0] }).select().single();
+    if (nr) diligenceDeals.push(nr);
+  }
+}
+async function updateDiligenceStage(dilId, stage) {
+  await sb.from('diligence_deals').update({ diligence_stage: stage, updated_at: new Date().toISOString() }).eq('id', dilId);
+  const v = diligenceDeals.find(x=>x.id===dilId); if (v) v.diligence_stage = stage;
+  renderDiligence(); toast('Etapa atualizada');
+}
+async function toggleDiligenceCheck(dilId, field) {
+  const v = diligenceDeals.find(x=>x.id===dilId); if(!v)return;
+  v[field] = !v[field];
+  await sb.from('diligence_deals').update({ [field]: v[field], updated_at: new Date().toISOString() }).eq('id', dilId);
+  openDiligenceDeal(dilId); renderDiligence();
+}
+function renderDilActivitiesHtml(dilId) {
+  const acts = (dilActivitiesCache[dilId]||[]).filter(a=>!a.done).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if (!acts.length) return '<p style="font-size:13px;color:var(--text-3)">Nenhuma atividade pendente.</p>';
+  return acts.map(a => {
+    const od = !a.done && isOverdue(a.date);
+    const cm = a.comment ? '<div style="font-size:12px;color:var(--text-2);margin-top:4px;background:var(--bg-card);border-radius:5px;padding:6px 8px;border:1px solid var(--border-md);white-space:pre-wrap;cursor:pointer" onclick="toggleDilActComment(\''+dilId+'\',\''+a.id+'\',this)">'+a.comment+' <i class="ti ti-pencil" style="font-size:10px;color:var(--text-3);vertical-align:middle"></i></div>' : '';
+    return '<div class="act-item" data-dil-act-id="'+a.id+'">'+
+      '<div class="act-check" onclick="toggleActFromDiligence(\''+dilId+'\',\''+a.id+'\')"><i class="ti ti-check"></i></div>'+
+      '<div style="flex:1"><div class="act-title-txt">'+a.title+'</div><div class="act-meta"><span '+(od?'class="overdue"':'')+'>'+fmtDate(a.date)+'</span>'+(od?' · <span class="overdue">VENCIDA</span>':'')+(a.owner?' · <span style="color:var(--text-3)">'+a.owner+'</span>':'')+
+      '</div>'+cm+'</div>'+
+      '<div style="display:flex;gap:2px">'+
+        '<button onclick="toggleDilActComment(\''+dilId+'\',\''+a.id+'\',this)" style="background:none;border:none;cursor:pointer;color:'+(a.comment?'var(--accent)':'var(--text-3)')+';font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px"><i class="ti ti-message"></i></button>'+
+        '<button onclick="editDilAct(\''+dilId+'\',\''+a.id+'\',this)" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px"><i class="ti ti-pencil"></i></button>'+
+        '<button onclick="deleteDilAct(\''+dilId+'\',\''+a.id+'\')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px"><i class="ti ti-trash"></i></button>'+
+      '</div></div>';
+  }).join('');
+}
+function renderDilHistHtml(dilId) {
+  const done = (dilActivitiesCache[dilId]||[]).filter(a=>a.done).sort((a,b)=>(b.done_at||'').localeCompare(a.done_at||''));
+  if (!done.length) return '';
+  return '<div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Concluídas</div>'+
+    done.map(a => {
+      const dd = a.done_at ? new Date(a.done_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}) : '';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--bg-surface);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:4px;opacity:.6">'+
+        '<div class="act-check done"><i class="ti ti-check"></i></div>'+
+        '<div style="flex:1"><div style="font-size:13px;color:var(--text-3);text-decoration:line-through">'+a.title+'</div>'+(dd?'<div style="font-size:11px;color:var(--text-3)">Concluída em '+dd+'</div>':'')+
+        '</div></div>';
+    }).join('');
+}
+async function addDiligenceActivity(dilId) {
+  const title = document.getElementById('dil-act-title')?.value.trim();
+  const date = document.getElementById('dil-act-date')?.value;
+  if (!title) { toast('Informe o título da atividade.','error'); return; }
+  const author = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
+  const { data, error } = await sb.from('diligence_activities').insert({ diligence_deal_id: dilId, title, date: date||null, owner: author, done: false }).select().single();
+  if (error) { toast('Erro ao adicionar atividade.','error'); return; }
+  if (!dilActivitiesCache[dilId]) dilActivitiesCache[dilId] = [];
+  dilActivitiesCache[dilId].push(data);
+  document.getElementById('dil-act-title').value = '';
+  document.getElementById('dil-act-date').value = '';
+  document.getElementById('dil-act-list').innerHTML = renderDilActivitiesHtml(dilId);
+  toast('Atividade adicionada!'); renderDiligence(); updateBadges();
+}
+async function toggleActFromDiligence(dilId, actId) {
+  if (!dilActivitiesCache[dilId]) return;
+  const a = dilActivitiesCache[dilId].find(x=>x.id===actId); if(!a)return;
+  a.done = !a.done; a.done_at = a.done ? new Date().toISOString() : null;
+  await sb.from('diligence_activities').update({ done: a.done, done_at: a.done_at }).eq('id', actId);
+  const dl = document.getElementById('dil-act-list'); if (dl) dl.innerHTML = renderDilActivitiesHtml(dilId);
+  const hl = document.getElementById('dil-hist-list'); if (hl) hl.innerHTML = renderDilHistHtml(dilId);
+  renderDiligence();
+  const av = document.getElementById('view-activities');
+  if (av && av.style.display !== 'none') {
+    const tr = document.querySelector('tr[data-act-id="'+String(actId)+'"]');
+    const sd = document.getElementById('show-done-acts')?.checked;
+    if (tr && a.done && !sd) { tr.style.transition='opacity .15s'; tr.style.opacity='0'; setTimeout(()=>tr.remove(),150); }
+    else renderAllActivities();
+  }
+  toast(a.done?'Atividade concluída!':'Atividade reaberta!'); updateBadges();
+}
+async function deleteDilAct(dilId, actId) {
+  await sb.from('diligence_activities').delete().eq('id', actId);
+  dilActivitiesCache[dilId] = (dilActivitiesCache[dilId]||[]).filter(x=>x.id!==actId);
+  const dl = document.getElementById('dil-act-list'); if (dl) dl.innerHTML = renderDilActivitiesHtml(dilId);
+  const av = document.getElementById('view-activities');
+  if (av && av.style.display !== 'none') renderAllActivities();
+  renderDiligence(); updateBadges();
+}
+function editDilAct(dilId, actId, triggerBtn) {
+  const a = (dilActivitiesCache[dilId]||[]).find(x=>x.id===actId); if(!a)return;
+  document.querySelectorAll('.val-act-edit-popover').forEach(el=>el.remove());
+  const pop = document.createElement('div'); pop.className = 'val-act-edit-popover';
+  const rect = triggerBtn.getBoundingClientRect();
+  pop.style.cssText = 'position:fixed;top:'+(rect.bottom+6)+'px;left:'+Math.min(rect.left,window.innerWidth-380)+'px;width:360px;z-index:2000;background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--radius-lg);box-shadow:0 8px 24px rgba(0,0,0,.18);padding:12px;display:flex;flex-direction:column;gap:8px;';
+  const ti = document.createElement('input'); ti.value = a.title;
+  ti.style.cssText = 'font-size:13px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);outline:none;width:100%;background:var(--bg-surface);color:var(--text);font-family:var(--font)';
+  const di = document.createElement('input'); di.type='date'; di.value=a.date||'';
+  di.style.cssText = 'font-size:13px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);outline:none;width:100%;background:var(--bg-surface);color:var(--text);font-family:var(--font);cursor:pointer';
+  const br = document.createElement('div'); br.style.cssText='display:flex;gap:7px;justify-content:flex-end';
+  const bc = document.createElement('button'); bc.textContent='Cancelar'; bc.style.cssText='background:none;border:1px solid var(--border-md);color:var(--text-2);font-size:12px;font-weight:600;font-family:var(--font);padding:6px 14px;border-radius:var(--radius);cursor:pointer'; bc.onclick=()=>pop.remove();
+  const bs = document.createElement('button'); bs.textContent='Salvar'; bs.style.cssText='background:var(--accent);border:none;color:#fff;font-size:12px;font-weight:600;font-family:var(--font);padding:6px 14px;border-radius:var(--radius);cursor:pointer';
+  bs.onclick = async () => { a.title=ti.value.trim()||a.title; a.date=di.value||a.date; await sb.from('diligence_activities').update({title:a.title,date:a.date||null}).eq('id',actId); pop.remove(); document.getElementById('dil-act-list').innerHTML=renderDilActivitiesHtml(dilId); toast('Atividade atualizada'); };
+  br.appendChild(bc); br.appendChild(bs); pop.appendChild(ti); pop.appendChild(di); pop.appendChild(br); document.body.appendChild(pop); ti.focus();
+  setTimeout(()=>{ document.addEventListener('mousedown',function h(e){if(!pop.contains(e.target)&&e.target!==triggerBtn){pop.remove();document.removeEventListener('mousedown',h);}}); },10);
+}
+function toggleDilActComment(dilId, actId, triggerEl) {
+  document.querySelectorAll('.act-comment-popover').forEach(el=>el.remove());
+  const a = (dilActivitiesCache[dilId]||[]).find(x=>x.id===actId); if(!a)return;
+  const pop = document.createElement('div'); pop.className='act-comment-popover';
+  const rect = triggerEl.getBoundingClientRect();
+  pop.style.cssText='position:fixed;top:'+(rect.bottom+6)+'px;left:'+Math.max(8,Math.min(rect.left,window.innerWidth-500))+'px;width:480px;z-index:2000;background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--radius-lg);box-shadow:0 8px 24px rgba(0,0,0,.18);padding:10px;display:flex;flex-direction:column;gap:8px;';
+  pop.innerHTML='<div style="display:flex;gap:6px;align-items:flex-end"><textarea id="dil-comment-inp-'+actId+'" placeholder="Adicione um comentário..." style="flex:1;min-height:100px;max-height:260px;font-size:13px;padding:8px 10px;resize:vertical;overflow-y:auto;font-family:var(--font);background:var(--bg-surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text)">'+(a.comment||'')+'</textarea><button class="act-comment-save-btn" style="background:var(--accent);border:none;color:#fff;font-size:11px;font-weight:600;font-family:var(--font);padding:7px 12px;border-radius:var(--radius);cursor:pointer;white-space:nowrap;align-self:flex-end">Salvar</button></div>';
+  document.body.appendChild(pop);
+  const inp=pop.querySelector('#dil-comment-inp-'+actId); inp.focus();
+  pop.querySelector('.act-comment-save-btn').addEventListener('click',async()=>{ a.comment=inp.value.trim(); await sb.from('diligence_activities').update({comment:a.comment||null}).eq('id',actId); pop.remove(); document.getElementById('dil-act-list').innerHTML=renderDilActivitiesHtml(dilId); toast('Comentário salvo!'); });
+  setTimeout(()=>{ document.addEventListener('mousedown',function h(e){if(!pop.contains(e.target)&&e.target!==triggerEl){pop.remove();document.removeEventListener('mousedown',h);}}); },10);
+}
+function editValSharepointDil(dilId, triggerEl) {
+  document.querySelectorAll('.sharepoint-popover').forEach(el=>el.remove());
+  const v = diligenceDeals.find(x=>x.id===dilId); if(!v)return;
+  const pop = document.createElement('div'); pop.className='sharepoint-popover';
+  const rect = triggerEl.getBoundingClientRect();
+  pop.style.cssText='position:fixed;top:'+(rect.bottom+6)+'px;left:'+Math.max(8,Math.min(rect.left-200,window.innerWidth-360))+'px;width:340px;z-index:2000;background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--radius-lg);box-shadow:0 8px 24px rgba(0,0,0,.18);padding:12px;display:flex;flex-direction:column;gap:8px;';
+  pop.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px"><i class="ti ti-brand-sharepoint" style="color:#0078D4"></i> Link da pasta SharePoint</div>'+
+    '<input id="dil-sp-inp" type="url" placeholder="https://bhub.sharepoint.com/..." value="'+(v.sharepoint_url||'')+'" style="font-size:12px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);outline:none;width:100%;background:var(--bg-surface);color:var(--text);font-family:var(--font)">'+
+    '<div style="display:flex;gap:6px;justify-content:flex-end"><button onclick="this.closest(\'.sharepoint-popover\').remove()" style="background:none;border:1px solid var(--border-md);color:var(--text-2);font-size:12px;font-weight:600;font-family:var(--font);padding:5px 12px;border-radius:var(--radius);cursor:pointer">Cancelar</button><button id="dil-sp-save" style="background:var(--accent);border:none;color:#fff;font-size:12px;font-weight:600;font-family:var(--font);padding:5px 12px;border-radius:var(--radius);cursor:pointer">Salvar</button></div>';
+  document.body.appendChild(pop);
+  const inp=pop.querySelector('#dil-sp-inp'); inp.focus(); inp.select();
+  pop.querySelector('#dil-sp-save').addEventListener('click',async()=>{ v.sharepoint_url=inp.value.trim()||null; await sb.from('diligence_deals').update({sharepoint_url:v.sharepoint_url}).eq('id',dilId); toast('Link salvo!'); pop.remove(); openDiligenceDeal(dilId); });
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')pop.querySelector('#dil-sp-save').click();});
+  setTimeout(()=>{ document.addEventListener('mousedown',function handler(e){if(!pop.contains(e.target)&&e.target!==triggerEl){pop.remove();document.removeEventListener('mousedown',handler);}}); },10);
+}
+async function deleteDiligenceDeal(dilId) {
+  if (!confirm('Remover este deal da Diligência?')) return;
+  await sb.from('diligence_deals').delete().eq('id', dilId);
+  diligenceDeals = diligenceDeals.filter(x=>x.id!==dilId);
+  document.getElementById('modal-diligence-deal').classList.remove('open');
+  renderDiligence(); toast('Deal removido da diligência');
+}
+function openDiligenceDeal(dilId) {
+  const v = diligenceDeals.find(x=>x.id===dilId); if(!v)return;
+  const deal = deals.find(x=>x.id==v.deal_id);
+  const stageOpts = DILIGENCE_STAGES.map(s=>'<option value="'+s+'"'+(s===v.diligence_stage?' selected':'')+'>'+s+'</option>').join('');
+  const checksHtml = DILIGENCE_CHECKLIST.map(ck => {
+    const active = v[ck.field];
+    return '<div onclick="toggleDiligenceCheck(\''+v.id+'\',\''+ck.field+'\')" style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg-surface);border:1px solid '+(active?'var(--accent)':'var(--border)')+';border-radius:var(--radius);cursor:pointer;transition:border-color .15s">'+
+      '<div style="width:20px;height:20px;border-radius:50%;border:2px solid '+(active?'var(--accent)':'var(--border-md)')+';background:'+(active?'var(--accent)':'transparent')+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+(active?'<i class="ti ti-check" style="font-size:11px;color:#fff"></i>':'')+
+      '</div><span style="font-size:12px;font-weight:500;color:'+(active?'var(--accent)':'var(--text-2)')+'">'+ck.label+'</span></div>';
+  }).join('');
+  const spHtml = v.sharepoint_url
+    ? '<a href="'+v.sharepoint_url+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text-2);font-size:12px;font-weight:500" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'"><i class="ti ti-brand-sharepoint" style="font-size:16px;color:#0078D4;flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Abrir pasta</span><i class="ti ti-external-link" style="font-size:11px;margin-left:auto;flex-shrink:0;opacity:.5"></i></a>'
+    : '<div style="padding:7px 10px;background:var(--bg-surface);border:1px dashed var(--border-md);border-radius:var(--radius);font-size:12px;color:var(--text-3);text-align:center;cursor:pointer" onclick="editValSharepointDil(\''+v.id+'\',this)">+ Adicionar link</div>';
+  const doneCount = DILIGENCE_CHECKLIST.filter(ck=>v[ck.field]).length;
+  document.getElementById('diligence-modal-content').innerHTML =
+    '<div style="flex-shrink:0;background:var(--bg-surface);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:flex-start;gap:16px">'+
+      '<button class="modal-close" onclick="document.getElementById(\'modal-diligence-deal\').classList.remove(\'open\')" style="flex-shrink:0;margin-top:4px"><i class="ti ti-arrow-left"></i></button>'+
+      '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:8px">'+
+        '<div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap">'+
+          '<div style="font-size:18px;font-weight:800;color:var(--accent)">'+v.company+'</div>'+
+          (v.mrr?'<div style="font-size:18px;font-weight:800;color:var(--text)">'+fmtMrr(v.mrr)+' MRR</div>':'')+
+        '</div>'+
+        '<div style="display:flex;align-items:flex-start;justify-content:center;gap:16px;flex-wrap:wrap">'+
+          (deal&&deal.segment?'<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Segmento</div><span style="font-size:12px;color:var(--text-2)">'+deal.segment+'</span></div>':'')+
+          (deal&&deal.state?'<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Estado</div><span style="font-size:12px;color:var(--text-2)">'+deal.state+'</span></div>':'')+
+          (deal&&deal.city?'<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Município</div><span style="font-size:12px;color:var(--text-2)">'+deal.city+'</span></div>':'')+
+          '<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Etapa de Diligência</div>'+
+            '<select onchange="updateDiligenceStage(\''+v.id+'\',this.value)" style="font-size:12px;font-weight:600;border:none;background:var(--bg-card);color:var(--text-2);font-family:var(--font);cursor:pointer;padding:2px 4px;text-align:center;border-radius:var(--radius)">'+stageOpts+'</select>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="deal-layout">'+
+      '<div class="deal-sidebar">'+
+        '<div><div class="sidebar-section-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span><i class="ti ti-folder" style="font-size:12px;margin-right:4px;color:var(--text-3)"></i>SharePoint</span><button onclick="editValSharepointDil(\''+v.id+'\',this)" style="background:none;border:none;color:var(--text-3);font-size:12px;cursor:pointer;padding:0" title="Editar"><i class="ti ti-pencil"></i></button></div>'+spHtml+'</div>'+
+        '<div><div class="sidebar-section-title">Checklist Diligência <span style="font-size:10px;color:var(--text-3);font-weight:400">('+doneCount+'/'+DILIGENCE_CHECKLIST.length+')</span></div><div style="display:flex;flex-direction:column;gap:6px">'+checksHtml+'</div></div>'+
+        '<div style="padding-top:8px;border-top:1px solid var(--border)"><button onclick="deleteDiligenceDeal(\''+v.id+'\')" class="btn-danger"><i class="ti ti-trash"></i> Remover da diligência</button></div>'+
+      '</div>'+
+      '<div class="deal-main-scroll">'+
+        '<div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px"><i class="ti ti-calendar-event"></i> Atividades</div>'+
+        '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'+
+          '<input id="dil-act-title" placeholder="Título da atividade" style="flex:1;min-width:180px;font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:7px 10px;background:var(--bg-card);color:var(--text)"/>'+
+          '<input id="dil-act-date" type="date" onclick="this.showPicker&&this.showPicker()" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:7px 10px;background:var(--bg-card);color:var(--text);cursor:pointer"/>'+
+          '<button onclick="addDiligenceActivity(\''+v.id+'\')" class="btn-add" style="white-space:nowrap"><i class="ti ti-plus"></i> Adicionar</button>'+
+        '</div>'+
+        '<div id="dil-act-list"><p style="font-size:13px;color:var(--text-3)">Carregando...</p></div>'+
+        '<div id="dil-hist-list" style="margin-top:16px"></div>'+
+      '</div>'+
+    '</div>';
+  document.getElementById('modal-diligence-deal').classList.add('open');
+  loadDilActivities(v.id).then(() => {
+    const el=document.getElementById('dil-act-list'); if(el) el.innerHTML=renderDilActivitiesHtml(v.id);
+    const hl=document.getElementById('dil-hist-list'); if(hl) hl.innerHTML=renderDilHistHtml(v.id);
+    updateBadges();
+  });
+}
+function renderDiligence() {
+  const kb = document.getElementById('diligence-kanban'); if(!kb) return;
+  kb.innerHTML = '';
+  DILIGENCE_STAGES.forEach((stage, si) => {
+    const col = DILIGENCE_COLORS[si];
+    const ds = diligenceDeals.filter(v=>(v.diligence_stage||DILIGENCE_STAGES[0])===stage).sort((a,b)=>(parseFloat(b.mrr)||0)-(parseFloat(a.mrr)||0));
+    const lane = document.createElement('div'); lane.className='val-lane';
+    lane.innerHTML = '<div class="val-lane-head" style="background:'+col.bg+';border-bottom:2px solid '+col.bd+';min-height:64px"><div class="lane-head-left"><div class="lane-head-title" style="color:'+col.text+'">'+stage+'</div></div><span class="lane-count" style="color:'+col.text+'">'+ds.length+'</span></div>'+
+      '<div class="val-lane-body">'+
+      ds.map(v => {
+        const deal=deals.find(x=>x.id==v.deal_id);
+        const done=DILIGENCE_CHECKLIST.filter(ck=>v[ck.field]).length;
+        const total=DILIGENCE_CHECKLIST.length;
+        const mrrHtml=v.mrr?'<div class="deal-mrr">'+fmtMrr(v.mrr)+' MRR</div>':'';
+        const seg=deal&&deal.segment?'<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">'+deal.segment+'</span>':'';
+        const st=deal&&deal.state?'<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">'+deal.state+'</span>':'';
+        const ct=deal&&deal.city?'<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">'+deal.city+'</span>':'';
+        const acts=(dilActivitiesCache[v.id]||[]).filter(a=>!a.done&&a.date).sort((a,b)=>a.date.localeCompare(b.date));
+        const next=acts[0]; const today=todayLocal();
+        let actFooter='';
+        if(next){const od=isOverdue(next.date);const it=next.date===today;actFooter='<div class="deal-footer"><div class="deal-activity"><span class="activity-dot '+(od?'dot-red':it?'dot-green':'dot-gray')+'"></span><span style="'+(od?'color:#EF4444;font-weight:600':it?'color:#22C55E;font-weight:600':'')+'">'+next.title+'</span></div></div>';}
+        else{actFooter='<div class="deal-footer"><div class="deal-activity"><span class="activity-dot" style="background:#F59E0B"></span><span style="color:#F59E0B;font-size:11px">Sem atividades</span></div></div>';}
+        return '<div class="val-card" data-dil-id="'+v.id+'" draggable="true">'+
+          '<div class="deal-company">'+v.company+'</div>'+mrrHtml+
+          ((seg+st+ct)?'<div class="deal-tags">'+(seg+st+ct)+'</div>':'')+
+          '<div style="margin-top:8px;display:flex;align-items:center;gap:6px"><div style="flex:1;height:3px;background:var(--border);border-radius:2px"><div style="height:100%;width:'+(done/total*100)+'%;background:var(--accent);border-radius:2px"></div></div><span style="font-size:10px;color:var(--text-3);font-weight:600">'+done+'/'+total+'</span></div>'+
+          actFooter+'</div>';
+      }).join('')+'</div>';
+    kb.appendChild(lane);
+    const body=lane.querySelector('.val-lane-body');
+    lane.querySelectorAll('.val-card').forEach(card=>{
+      card.addEventListener('click',()=>openDiligenceDeal(card.dataset.dilId));
+      card.addEventListener('dragstart',e=>{dilDragId=card.dataset.dilId;e.dataTransfer.setData('text/plain',dilDragId);e.dataTransfer.effectAllowed='move';setTimeout(()=>card.style.opacity='.4',0);});
+      card.addEventListener('dragend',()=>{card.style.opacity='1';dilDragId=null;});
+    });
+    const doDrop=async e=>{e.preventDefault();e.stopPropagation();body.classList.remove('val-drag-over');const id=dilDragId;dilDragId=null;if(!id)return;await updateDiligenceStage(id,stage);};
+    [body,lane].forEach(el=>{
+      el.addEventListener('dragover',e=>{e.preventDefault();body.classList.add('val-drag-over');});
+      el.addEventListener('dragleave',e=>{if(!lane.contains(e.relatedTarget))body.classList.remove('val-drag-over');});
+      el.addEventListener('drop',doDrop);
+    });
+  });
+}
 
 async function loadUsersView() {
   const body = document.getElementById('users-list-body');
