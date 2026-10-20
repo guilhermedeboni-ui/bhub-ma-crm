@@ -458,6 +458,9 @@
         <i class="ti ti-calendar-event"></i> <span>Atividades</span>
         <span class="sb-badge" id="act-badge" style="display:none"></span>
       </button>
+      <button class="sb-nav-item" id="nav-intel" onclick="setView('intel')">
+        <i class="ti ti-chart-dots"></i> <span>Inteligência</span>
+      </button>
       <button class="sb-nav-item" id="nav-users" onclick="setView('users')" style="display:none">
         <i class="ti ti-users"></i> <span>Usuários</span>
       </button>
@@ -542,6 +545,10 @@
       </div>
 
 
+
+      <div id="view-intel" style="display:none">
+        <div id="intel-container" style="padding:24px;max-width:1100px;margin:0 auto"></div>
+      </div>
 
       <div id="view-users" style="display:none">
         <div class="users-container">
@@ -2179,12 +2186,14 @@ function setView(v) {
   document.getElementById('view-valuation').style.display = v==='valuation' ? 'block' : 'none';
   document.getElementById('view-diligence').style.display = v==='diligence' ? 'block' : 'none';
   document.getElementById('view-users').style.display = v==='users' ? 'block' : 'none';
+  document.getElementById('view-intel').style.display = v==='intel' ? 'block' : 'none';
   document.getElementById('nav-pipeline').classList.toggle('active', v==='pipeline');
   document.getElementById('nav-activities').classList.toggle('active', v==='activities');
   document.getElementById('nav-valuation').classList.toggle('active', v==='valuation');
   document.getElementById('nav-diligence').classList.toggle('active', v==='diligence');
+  document.getElementById('nav-intel').classList.toggle('active', v==='intel');
   document.getElementById('nav-users').classList.toggle('active', v==='users');
-  const titles = {pipeline:'Pipeline Comercial', activities:'Atividades', valuation:'Análise de Negócio', diligence:'Diligência', users:'Usuários'};
+  const titles = {pipeline:'Pipeline Comercial', activities:'Atividades', valuation:'Análise de Negócio', diligence:'Diligência', intel:'Inteligência', users:'Usuários'};
   document.getElementById('page-title').textContent = titles[v]||'';
   if (v==='activities') {
     Promise.all([
@@ -2194,6 +2203,7 @@ function setView(v) {
   }
   if (v==='valuation') { loadValuationDeals().then(() => renderValuation()); }
   if (v==='diligence') { loadDiligenceDeals().then(() => renderDiligence()); }
+  if (v==='intel') renderIntel();
   if (v==='users') {
     if (currentUserRole !== 'admin') { toast('Acesso restrito.','error'); setView('pipeline'); return; }
     loadUsersView();
@@ -3076,6 +3086,162 @@ function renderDiligence() {
       el.addEventListener('drop',doDrop);
     });
   });
+}
+
+
+// ── INTELIGÊNCIA DE MERCADO ──
+function renderIntel() {
+  const container = document.getElementById('intel-container');
+  if (!container) return;
+
+  // Excluir deals "Ganho"
+  const data = deals.filter(d => d.stage !== 'Ganho');
+
+  // Filtros ativos
+  const fSeg = container.querySelector('#fi-seg')?.value || '';
+  const fState = container.querySelector('#fi-state')?.value || '';
+  const fMrr = container.querySelector('#fi-mrr')?.value || '';
+
+  let filtered = data;
+  if (fSeg) filtered = filtered.filter(d => d.segment === fSeg);
+  if (fState) filtered = filtered.filter(d => d.state === fState);
+  if (fMrr === '1') filtered = filtered.filter(d => (d.mrr||0) <= 300000);
+  else if (fMrr === '2') filtered = filtered.filter(d => (d.mrr||0) > 300000 && (d.mrr||0) <= 1000000);
+  else if (fMrr === '3') filtered = filtered.filter(d => (d.mrr||0) > 1000000);
+
+  const total = filtered.length;
+  const totalMrr = filtered.reduce((s,d)=>s+(d.mrr||0),0);
+
+  // Opções de filtro
+  const segs = [...new Set(data.map(d=>d.segment).filter(Boolean))].sort();
+  const states = [...new Set(data.map(d=>d.state).filter(Boolean))].sort();
+
+  // Distribuição por segmento
+  const bySegMap = {};
+  filtered.forEach(d => {
+    const k = d.segment||'Não informado';
+    if (!bySegMap[k]) bySegMap[k] = { count:0, mrr:0 };
+    bySegMap[k].count++;
+    bySegMap[k].mrr += d.mrr||0;
+  });
+  const bySeg = Object.entries(bySegMap).sort((a,b)=>b[1].count-a[1].count).slice(0,8);
+  const maxSegCount = Math.max(...bySeg.map(([,v])=>v.count), 1);
+
+  // Top estados por quantidade
+  const byStateMap = {};
+  filtered.forEach(d => {
+    const k = d.state||'N/I';
+    if (!byStateMap[k]) byStateMap[k] = { count:0, mrr:0 };
+    byStateMap[k].count++;
+    byStateMap[k].mrr += d.mrr||0;
+  });
+  const byState = Object.entries(byStateMap).sort((a,b)=>b[1].count-a[1].count).slice(0,10);
+  const maxStateCount = Math.max(...byState.map(([,v])=>v.count), 1);
+
+  // Concentração MRR
+  const faixas = [
+    { label: 'Até R$300K', count: filtered.filter(d=>(d.mrr||0)<=300000).length, mrr: filtered.filter(d=>(d.mrr||0)<=300000).reduce((s,d)=>s+(d.mrr||0),0) },
+    { label: 'R$300K – R$1MM', count: filtered.filter(d=>(d.mrr||0)>300000&&(d.mrr||0)<=1000000).length, mrr: filtered.filter(d=>(d.mrr||0)>300000&&(d.mrr||0)<=1000000).reduce((s,d)=>s+(d.mrr||0),0) },
+    { label: 'Acima de R$1MM', count: filtered.filter(d=>(d.mrr||0)>1000000).length, mrr: filtered.filter(d=>(d.mrr||0)>1000000).reduce((s,d)=>s+(d.mrr||0),0) },
+  ];
+  const faixaColors = ['#6366F1','#8B5CF6','#EC4899'];
+
+  // Helpers
+  const fmtNum = n => n >= 1000000 ? (n/1000000).toFixed(1)+'B' : n >= 1000 ? (n/1000).toFixed(0)+'K' : n;
+  const pct = (a,b) => b > 0 ? Math.round(a/b*100) : 0;
+
+  container.innerHTML = `
+    <div style="margin-bottom:24px">
+      <div style="font-size:22px;font-weight:800;color:var(--text)">Inteligência de Mercado</div>
+      <div style="font-size:13px;color:var(--text-3);margin-top:2px">Pipeline excluindo deals Ganho</div>
+    </div>
+
+    <!-- FILTROS -->
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:28px;padding:16px;background:var(--bg-surface);border-radius:var(--radius-lg);border:1px solid var(--border)">
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">Segmento</label>
+        <select id="fi-seg" onchange="renderIntel()" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:6px 10px;background:var(--bg-card);color:var(--text)">
+          <option value="">Todos</option>
+          ${segs.map(s=>`<option value="${s}" ${s===fSeg?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">Estado</label>
+        <select id="fi-state" onchange="renderIntel()" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:6px 10px;background:var(--bg-card);color:var(--text)">
+          <option value="">Todos</option>
+          ${states.map(s=>`<option value="${s}" ${s===fState?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">Faixa de MRR</label>
+        <select id="fi-mrr" onchange="renderIntel()" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:6px 10px;background:var(--bg-card);color:var(--text)">
+          <option value="">Todas</option>
+          <option value="1" ${fMrr==='1'?'selected':''}>Até R$300K</option>
+          <option value="2" ${fMrr==='2'?'selected':''}>R$300K – R$1MM</option>
+          <option value="3" ${fMrr==='3'?'selected':''}>Acima de R$1MM</option>
+        </select>
+      </div>
+      ${(fSeg||fState||fMrr)?`<div style="display:flex;align-items:flex-end"><button onclick="document.querySelectorAll('#fi-seg,#fi-state,#fi-mrr').forEach(el=>el.value='');renderIntel()" style="font-family:var(--font);font-size:12px;padding:6px 12px;border:1px solid var(--border-md);border-radius:var(--radius);background:none;color:var(--text-3);cursor:pointer">× Limpar filtros</button></div>`:''}
+    </div>
+
+    <!-- BIG NUMBERS -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px">
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px 28px">
+        <div style="font-size:13px;color:var(--text-3);margin-bottom:8px">Escritórios mapeados</div>
+        <div style="font-size:48px;font-weight:900;color:var(--accent);line-height:1">${total}</div>
+      </div>
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px 28px">
+        <div style="font-size:13px;color:var(--text-3);margin-bottom:8px">MRR total mapeado</div>
+        <div style="font-size:48px;font-weight:900;color:var(--text);line-height:1">R$${fmtNum(totalMrr)}</div>
+      </div>
+    </div>
+
+    <!-- CHARTS ROW -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px">
+
+      <!-- Distribuição por segmento -->
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px">
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:16px">Por segmento</div>
+        ${bySeg.length ? bySeg.map(([seg, v]) => `
+          <div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+              <span style="font-size:12px;color:var(--text-2);font-weight:500">${seg}</span>
+              <span style="font-size:12px;color:var(--text-3)">${v.count} · R$${fmtNum(v.mrr)}</span>
+            </div>
+            <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+              <div style="height:100%;width:${pct(v.count,maxSegCount)}%;background:var(--accent);border-radius:3px;transition:width .4s"></div>
+            </div>
+          </div>`).join('') : '<p style="font-size:13px;color:var(--text-3)">Nenhum dado.</p>'}
+      </div>
+
+      <!-- Cobertura geográfica -->
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px">
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:16px">Por estado — top 10</div>
+        ${byState.length ? byState.map(([st, v]) => `
+          <div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+              <span style="font-size:12px;color:var(--text-2);font-weight:500">${st}</span>
+              <span style="font-size:12px;color:var(--text-3)">${v.count} · R$${fmtNum(v.mrr)}</span>
+            </div>
+            <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+              <div style="height:100%;width:${pct(v.count,maxStateCount)}%;background:#8B5CF6;border-radius:3px;transition:width .4s"></div>
+            </div>
+          </div>`).join('') : '<p style="font-size:13px;color:var(--text-3)">Nenhum dado.</p>'}
+      </div>
+    </div>
+
+    <!-- Concentração de MRR -->
+    <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:28px">
+      <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:16px">Concentração de MRR</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+        ${faixas.map((f,i) => `
+          <div style="padding:16px;background:var(--bg-card);border-radius:var(--radius);border-left:3px solid ${faixaColors[i]}">
+            <div style="font-size:11px;color:var(--text-3);margin-bottom:8px">${f.label}</div>
+            <div style="font-size:28px;font-weight:800;color:var(--text);line-height:1">${f.count}</div>
+            <div style="font-size:12px;color:var(--text-3);margin-top:4px">R$${fmtNum(f.mrr)} MRR · ${pct(f.count,total)}% dos deals</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
 }
 
 async function loadUsersView() {
