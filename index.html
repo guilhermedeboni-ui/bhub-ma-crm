@@ -9,8 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -794,14 +793,19 @@
 const { createClient } = supabase;
 const sb = createClient('https://yrpjmcixnfichiciafgw.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlycGptY2l4bmZpY2hpY2lhZmd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MTYzOTQsImV4cCI6MjA5NzI5MjM5NH0.my1p2SjsVcmA6lj4GuD3RqkCy3YVYYFfcDZoSJxqKPA');
 const SUPABASE_URL = 'https://yrpjmcixnfichiciafgw.supabase.co';
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlycGptY2l4bmZpY2hpY2lhZmd3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTcxNjM5NCwiZXhwIjoyMDk3MjkyMzk0fQ.hS5luAn1aiLxcSAXqo6dibHXqiiT97zmIHUBWw5TR6Y';
-async function adminCreateUser(email, password, fullName) {
-  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY },
-    body: JSON.stringify({ email, password, email_confirm: true, user_metadata: { full_name: fullName } })
-  });
-  return res.json();
+async function callAdminFn(body) {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return { error: 'Sessão expirada. Entre novamente.' };
+  try {
+    const res = await fetch(SUPABASE_URL + '/functions/v1/create-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+      body: JSON.stringify(body)
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: out.error || 'Erro ao executar a ação.' };
+    return out;
+  } catch (e) { return { error: 'Falha de conexão.' }; }
 }
 
 // ── FUNIS ──
@@ -2145,23 +2149,6 @@ async function deleteFunil(id) {
 
 
 // ── EXPORT ──
-function exportXLSX() {
-  if (typeof XLSX === 'undefined') { toast('Erro: biblioteca XLSX não carregada.','error'); return; }
-  const fd = getFiltered();
-  const rows = [['Empresa','MRR','Segmento','Sub-segmento','Estado','Município','Responsável','Origem','Origem detalhada','Etapa','Última interação','Atividades pendentes']];
-  fd.forEach(d => {
-    const lastH = d.history.length ? d.history[d.history.length-1].date+' – '+d.history[d.history.length-1].text : '';
-    const pendAct = d.activities.filter(a=>!a.done).map(a=>a.title).join('; ');
-    rows.push([d.company,d.mrr||0,d.segment||'',d.subsegment||'',d.state||'',d.city||'',d.owner||'',d.origem||'',d.origem_detail||'',d.stage,lastH,pendAct]);
-  });
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [{wch:30},{wch:12},{wch:15},{wch:20},{wch:8},{wch:20},{wch:20},{wch:15},{wch:20},{wch:20},{wch:50},{wch:40}];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Pipeline');
-  XLSX.writeFile(wb, 'bhub_ma_pipeline_'+new Date().toISOString().slice(0,10)+'.xlsx');
-  toast('Excel exportado!');
-}
-
 function exportCSV() {
   const fd = getFiltered();
   const rows = [['Empresa','MRR','Segmento','Sub-segmento','Estado','Município','Responsável','Origem','Origem detalhada','Etapa','Última interação','Atividades pendentes']];
@@ -3283,19 +3270,12 @@ async function inviteUser() {
   if (!name) { toast('Informe o nome.','error'); return; }
   const btn = document.querySelector('[onclick="inviteUser()"]');
   if (btn) { btn.disabled = true; btn.textContent = 'Criando...'; }
-  // Criar usuário via Admin API
-  const data = await adminCreateUser(email, password, name);
+  // Criar usuário e perfil pela Edge Function (a chave secreta fica no servidor)
+  const out = await callAdminFn({ action: 'create', email, password, fullName: name, role });
   if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-user-check" style="font-size:13px"></i> Criar usuário'; }
-  if (data.error || !data.id) {
-    const msg = data.error?.message || data.msg || 'Erro ao criar usuário.';
-    toast(msg.includes('already') ? 'E-mail já cadastrado.' : msg, 'error');
+  if (out.error) {
+    toast(/already|registered|exists/i.test(out.error) ? 'E-mail já cadastrado.' : out.error, 'error');
     return;
-  }
-  // Salvar perfil com must_change_password
-  const { error: profileError } = await sb.from('crm_profiles').insert({ user_id: data.id, email, full_name: name, role, must_change_password: true, pending: false });
-  if (profileError) {
-    // fallback para upsert caso já exista
-    await sb.from('crm_profiles').update({ full_name: name, role, must_change_password: true }).eq('user_id', data.id);
   }
   toast(`Usuário ${name} criado! Informe o e-mail e a senha temporária.`);
   document.getElementById('invite-name').value = '';
@@ -3313,9 +3293,13 @@ async function updateUserRole(userId, email, newRole) {
 
 async function removeUser(userId, email) {
   if (!confirm(`Remover acesso de ${email}?`)) return;
-  const q = userId ? sb.from('crm_profiles').delete().eq('user_id',userId) : sb.from('crm_profiles').delete().eq('email',email);
-  const { error } = await q;
-  if (error) { toast('Erro ao remover.','error'); return; }
+  if (userId) {
+    const out = await callAdminFn({ action: 'delete', userId });
+    if (out.error) { toast(out.error, 'error'); return; }
+  } else {
+    const { error } = await sb.from('crm_profiles').delete().eq('email', email);
+    if (error) { toast('Erro ao remover.','error'); return; }
+  }
   toast('Acesso removido.');
   loadUsersView();
 }
