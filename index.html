@@ -790,6 +790,12 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// ── SEGURANÇA: escape de HTML para textos digitados pelo usuário ──
+function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function safeUrl(u){u=String(u||'').trim();return /^https?:\/\//i.test(u)?u:'';}
+function jsArg(v){return esc(JSON.stringify(String(v==null?'':v)));}
+</script>
+<script>
 const { createClient } = supabase;
 const sb = createClient('https://yrpjmcixnfichiciafgw.supabase.co', 'sb_publishable_IneRmH9yq4nbcqc-wycL1Q_eMMgUGrY');
 const SUPABASE_URL = 'https://yrpjmcixnfichiciafgw.supabase.co';
@@ -943,7 +949,7 @@ function renderFunilList() {
     <div class="funil-item ${f.id === currentId ? 'active' : ''}" draggable="true" data-funil-id="${f.id}" data-funil-idx="${idx}" onclick="switchFunil('${f.id}')">
       <i class="ti ti-grip-vertical" style="font-size:13px;color:rgba(255,255,255,.2);flex-shrink:0;cursor:grab" onclick="event.stopPropagation()"></i>
       <i class="ti ti-git-branch" style="font-size:15px"></i>
-      <span style="flex:1">${f.name}</span>
+      <span style="flex:1">${esc(f.name)}</span>
       <button onclick="event.stopPropagation();openEditFunil('${f.id}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:13px;padding:2px;display:flex;align-items:center" title="Editar"><i class="ti ti-pencil"></i></button>
       ${funis.length > 1 ? `<button onclick="event.stopPropagation();deleteFunil('${f.id}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:13px;padding:2px;display:flex;align-items:center" title="Excluir"><i class="ti ti-trash"></i></button>` : ''}
     </div>`).join('');
@@ -1004,7 +1010,7 @@ function renderFunilStagesList() {
     <div class="stage-drag-item" draggable="true" data-stage-idx="${i}"
       style="display:flex;align-items:center;gap:8px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px">
       <i class="ti ti-grip-vertical" style="color:var(--text-3);font-size:16px;cursor:grab;flex-shrink:0"></i>
-      <span style="flex:1;font-size:14px">${s}</span>
+      <span style="flex:1;font-size:14px">${esc(s)}</span>
       <button onclick="moveFunilStage(${i},-1)" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:2px" title="Mover acima" ${i===0?'disabled':''}><i class="ti ti-arrow-up"></i></button>
       <button onclick="moveFunilStage(${i},1)" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:2px" title="Mover abaixo" ${i===tempFunilStages.length-1?'disabled':''}><i class="ti ti-arrow-down"></i></button>
       <button onclick="removeFunilStage(${i})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:2px" title="Remover"><i class="ti ti-x"></i></button>
@@ -1143,8 +1149,8 @@ function fmtDate(ds){if(!ds)return'';return new Date(ds+'T12:00:00').toLocaleDat
 function fmtDateShort(ds){if(!ds)return'';return new Date(ds+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});}
 
 // ── UF + IBGE ──
-function populateStates(selectId){const el=document.getElementById(selectId);el.innerHTML='<option value="">Selecione...</option>'+UFS.map(uf=>`<option value="${uf}">${uf}</option>`).join('');}
-async function loadCitiesFromIBGE(uf,citySelectId,selectedCity){const cityEl=document.getElementById(citySelectId);if(!uf){cityEl.innerHTML='<option value="">Selecione o estado primeiro</option>';return;}cityEl.innerHTML='<option value="">Carregando...</option>';try{const res=await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios?orderBy=nome`);const data=await res.json();cityEl.innerHTML='<option value="">Selecione...</option>'+data.map(c=>`<option value="${c.nome}" ${c.nome===selectedCity?'selected':''}>${c.nome}</option>`).join('');}catch(e){cityEl.innerHTML='<option value="">Erro ao carregar</option>';}}
+function populateStates(selectId){const el=document.getElementById(selectId);el.innerHTML='<option value="">Selecione...</option>'+UFS.map(uf=>`<option value="${esc(uf)}">${esc(uf)}</option>`).join('');}
+async function loadCitiesFromIBGE(uf,citySelectId,selectedCity){const cityEl=document.getElementById(citySelectId);if(!uf){cityEl.innerHTML='<option value="">Selecione o estado primeiro</option>';return;}cityEl.innerHTML='<option value="">Carregando...</option>';try{const res=await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios?orderBy=nome`);const data=await res.json();cityEl.innerHTML='<option value="">Selecione...</option>'+data.map(c=>`<option value="${esc(c.nome)}" ${c.nome===selectedCity?'selected':''}>${esc(c.nome)}</option>`).join('');}catch(e){cityEl.innerHTML='<option value="">Erro ao carregar</option>';}}
 
 // ── AUTOCOMPLETE ──
 function openAC(inputId, optsKey) {
@@ -1197,7 +1203,7 @@ function populateSelectFromOpts(selectId,key,selected){
   const el=document.getElementById(selectId);
   if(!el)return;
   if(el.tagName==='SELECT'){
-    el.innerHTML='<option value="">Selecione...</option>'+getOpts(key).map(o=>`<option value="${o}" ${o===selected?'selected':''}>${o}</option>`).join('');
+    el.innerHTML='<option value="">Selecione...</option>'+getOpts(key).map(o=>`<option value="${esc(o)}" ${o===selected?'selected':''}>${esc(o)}</option>`).join('');
   } else {
     el.value=selected||'';
   }
@@ -1207,7 +1213,7 @@ function renderOptsList(){
   const opts=getOpts(currentOptsKey);
   document.getElementById('opts-list').innerHTML=opts.length?opts.map((o,i)=>`
     <div class="opt-item" id="opt-item-${i}">
-      <span id="opt-text-${i}" style="flex:1">${o}</span>
+      <span id="opt-text-${i}" style="flex:1">${esc(o)}</span>
       <button onclick="startEditOpt(${i})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:13px;padding:3px;display:flex;align-items:center" title="Editar"><i class="ti ti-pencil"></i></button>
       <button class="btn-del-opt" onclick="removeOpt(${i})" title="Excluir"><i class="ti ti-trash"></i></button>
     </div>`).join(''):'<p style="font-size:13px;color:var(--text-3);text-align:center;padding:10px">Nenhuma opção.</p>';
@@ -1255,11 +1261,11 @@ async function addOpt(){const input=document.getElementById('new-opt-input');con
   if(key==='segmentos'){
     const fs=document.getElementById('f-segment');
     const cur=fs.value;
-    fs.innerHTML='<option value="">Todos</option>'+getOpts('segmentos').map(o=>`<option value="${o}" ${o===cur?'selected':''}>${o}</option>`).join('');
+    fs.innerHTML='<option value="">Todos</option>'+getOpts('segmentos').map(o=>`<option value="${esc(o)}" ${o===cur?'selected':''}>${esc(o)}</option>`).join('');
   }
 }
 async function removeOpt(i){const opts=getOpts(currentOptsKey);opts.splice(i,1);await saveOpts(currentOptsKey,opts);renderOptsList();refreshSingleDropdown(currentOptsKey);}
-function refreshFormDropdowns(){populateSelectFromOpts('nf-segment','segmentos');populateSelectFromOpts('nf-origem','origens');populateSelectFromOpts('nf-origem-detail','origens_detalhadas');const fs=document.getElementById('f-segment');const cur=fs.value;const opts=getOpts('segmentos');fs.innerHTML='<option value="">Todos</option>'+opts.map(o=>`<option value="${o}" ${o===cur?'selected':''}>${o}</option>`).join('');}
+function refreshFormDropdowns(){populateSelectFromOpts('nf-segment','segmentos');populateSelectFromOpts('nf-origem','origens');populateSelectFromOpts('nf-origem-detail','origens_detalhadas');const fs=document.getElementById('f-segment');const cur=fs.value;const opts=getOpts('segmentos');fs.innerHTML='<option value="">Todos</option>'+opts.map(o=>`<option value="${esc(o)}" ${o===cur?'selected':''}>${esc(o)}</option>`).join('');}
 
 // ── SEARCH SYNC ──
 let _syncSearchTimer = null;
@@ -1281,7 +1287,7 @@ function populateFilters(){
   const origens=[...new Set(deals.map(d=>d.origem).filter(Boolean))].sort();
   const origensDetail=[...new Set(deals.map(d=>d.origem_detail).filter(Boolean))].sort();
   const cities=[...new Set(deals.map(d=>d.city).filter(Boolean))].sort();
-  const fEl=(id,cur,opts)=>{const el=document.getElementById(id);if(!el)return;const first=el.options[0].outerHTML;el.innerHTML=first+opts.map(o=>`<option value="${o}">${o}</option>`).join('');el.value=cur;};
+  const fEl=(id,cur,opts)=>{const el=document.getElementById(id);if(!el)return;const first=el.options[0].outerHTML;el.innerHTML=first+opts.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join('');el.value=cur;};
   fEl('f-owner',document.getElementById('f-owner').value,owners);
   fEl('f-state',document.getElementById('f-state').value,states);
   fEl('f-stage',document.getElementById('f-stage').value,STAGES);
@@ -1296,7 +1302,7 @@ function populateOwners(selectId,selected){
   if(el.tagName==='SELECT'){
     const currentName = currentUser ? (currentUser.user_metadata?.full_name || currentUser.email) : '';
   const opts = crmUsers.length ? crmUsers : (currentName ? [currentName] : []);
-  el.innerHTML='<option value="">Selecione...</option>'+opts.map(u=>`<option value="${u}" ${u===selected?'selected':''}>${u}</option>`).join('');
+  el.innerHTML='<option value="">Selecione...</option>'+opts.map(u=>`<option value="${esc(u)}" ${u===selected?'selected':''}>${esc(u)}</option>`).join('');
   } else {
     el.value=selected||'';
   }
@@ -1317,11 +1323,11 @@ function renderKanban(){
     lane.className='lane';
     lane.innerHTML=`<div class="lane-head" style="background:${c.bg};border-bottom:2px solid ${c.bd}">
       <div class="lane-head-left">
-        <span class="lane-head-title" style="color:${c.tx}">${stage}</span>
+        <span class="lane-head-title" style="color:${c.tx}">${esc(stage)}</span>
         <span class="lane-head-mrr" style="color:${c.tx}">${fmtMrr(stageMrr)}</span>
       </div>
       <span class="lane-count" style="background:${c.bd};color:#fff">${ds.length}</span>
-    </div><div class="lane-body" data-stage="${stage}"></div>`;
+    </div><div class="lane-body" data-stage="${esc(stage)}"></div>`;
     kb.appendChild(lane);
     const body=lane.querySelector('.lane-body');
     // Drop aceito tanto no body quanto no lane inteiro (header excluído)
@@ -1345,21 +1351,21 @@ function renderKanban(){
       const card=document.createElement('div');
       card.className='deal-card';card.draggable=true;card.dataset.id=d.id;
       card.onclick=()=>openDeal(d.id);
-      card.innerHTML=`<div class="deal-name">${d.company}</div>
+      card.innerHTML=`<div class="deal-name">${esc(d.company)}</div>
         ${d.mrr?`<div class="deal-mrr">${fmtMrr(d.mrr)} MRR</div>`:''}
         <div class="deal-tags">
-          ${d.segment?`<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">${d.segment}</span>`:''}
-          ${d.state?`<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">${d.state}</span>`:''}
-          ${d.city?`<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">${d.city}</span>`:''}
+          ${d.segment?`<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">${esc(d.segment)}</span>`:''}
+          ${d.state?`<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">${esc(d.state)}</span>`:''}
+          ${d.city?`<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">${esc(d.city)}</span>`:''}
         </div>
         <div class="deal-footer">
-          ${d.owner?`<div class="deal-owner-txt"><i class="ti ti-user" style="font-size:11px"></i>${d.owner}</div>`:'<div></div>'}
+          ${d.owner?`<div class="deal-owner-txt"><i class="ti ti-user" style="font-size:11px"></i>${esc(d.owner)}</div>`:'<div></div>'}
           ${next?(()=>{
             const today=todayLocal();
             const isToday=next.date===today;
             const dotColor=od?'dot-red':isToday?'dot-green':'dot-gray';
             const txtStyle=od?'color:#EF4444;font-weight:600':isToday?'color:#22C55E;font-weight:600':'';
-            return `<div class="deal-activity"><span class="activity-dot ${dotColor}"></span><span style="${txtStyle}">${next.title}</span></div>`;
+            return `<div class="deal-activity"><span class="activity-dot ${dotColor}"></span><span style="${txtStyle}">${esc(next.title)}</span></div>`;
           })():`<div class="deal-activity"><span class="activity-dot" style="background:#F59E0B"></span><span style="color:#F59E0B;font-size:11px">Sem atividades</span></div>`}
         </div>`;
       card.addEventListener('dragstart',e=>{draggedDealId=d.id;card.classList.add('dragging');document.getElementById('delete-zone').classList.add('visible');e.dataTransfer.effectAllowed='move';});
@@ -1447,11 +1453,11 @@ function renderAllActivities(){
         <div class="act-check ${a.done?'done':''}" onclick="${checkClick}" style="margin:0 auto"><i class="ti ti-check"></i></div>
       </td>
       <td>
-        <div style="font-weight:600;${a.done?'text-decoration:line-through;color:var(--text-3)':''}">${a.title}</div>
-        ${a.comment?`<div style="font-size:11px;color:var(--text-3);margin-top:2px">${a.comment}</div>`:''}
+        <div style="font-weight:600;${a.done?'text-decoration:line-through;color:var(--text-3)':''}">${esc(a.title)}</div>
+        ${a.comment?`<div style="font-size:11px;color:var(--text-3);margin-top:2px">${esc(a.comment)}</div>`:''}
       </td>
       <td>${badge}</td>
-      <td style="font-size:12px;color:var(--text-2)">${a.owner||'<span style="color:var(--text-3)">—</span>'}</td>
+      <td style="font-size:12px;color:var(--text-2)">${a.owner?esc(a.owner):'<span style="color:var(--text-3)">—</span>'}</td>
       <td style="white-space:nowrap;${od?'color:#EF4444;font-weight:600':''}">${fmtDateShort(a.date)}</td>
       <td><span style="font-size:11px;font-weight:600;color:${statusColor}">${statusText}</span></td>
     </tr>`;
@@ -1484,14 +1490,14 @@ function renderDetail(d){
     const origIdx = h._origIdx;
     return `<div class="hist-item ${h.pinned?'pinned':''}">
       <div class="hist-meta">
-        <span class="hist-date">${h.date}${h.author?' · <span style="font-size:11px;font-weight:600;color:var(--accent)">'+ h.author +'</span>':''}</span>
+        <span class="hist-date">${esc(h.date)}${h.author?' · <span style="font-size:11px;font-weight:600;color:var(--accent)">'+ esc(h.author) +'</span>':''}</span>
         ${h.pinned?'<span class="hist-pin-badge">Fixado</span>':''}
         <div style="display:flex;gap:2px;margin-left:auto">
           <button onclick="togglePinHistory(${JSON.stringify(d.id)},${origIdx})" style="background:none;border:none;cursor:pointer;color:${h.pinned?'#F59E0B':'var(--text-3)'};font-size:14px;padding:2px;display:flex;align-items:center" title="${h.pinned?'Desafixar':'Fixar'}"><i class="ti ti-pin"></i></button>
           <button onclick="deleteHistory(${JSON.stringify(d.id)},${origIdx})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:2px;display:flex;align-items:center"><i class="ti ti-x"></i></button>
         </div>
       </div>
-      <div class="hist-text" style="white-space:pre-wrap">${h.text}</div>
+      <div class="hist-text" style="white-space:pre-wrap">${esc(h.text)}</div>
     </div>`;
   }).join('') : '<p style="font-size:13px;color:var(--text-3)">Nenhum registro.</p>';
 
@@ -1501,9 +1507,9 @@ function renderDetail(d){
     return `<div class="act-item" data-act-id="${a.id}">
       <div class="act-check ${a.done?'done':''}" onclick="toggleAct(${JSON.stringify(d.id)},${JSON.stringify(a.id)})"><i class="ti ti-check"></i></div>
       <div style="flex:1">
-        <div class="act-title-txt ${a.done?'done':''}">${a.title}</div>
-        <div class="act-meta"><span ${od?'class="overdue"':''}>${fmtDate(a.date)}</span>${od?' · <span class="overdue">VENCIDA</span>':''}${a.owner?` · <span style="color:var(--text-3)">${a.owner}</span>`:''}</div>
-        ${a.comment?`<div style="font-size:12px;color:var(--text-2);margin-top:4px;background:var(--bg-card);border-radius:5px;padding:6px 8px;border:1px solid var(--border-md);white-space:pre-wrap;cursor:pointer;position:relative" onclick="toggleActivityComment('${d.id}','${a.id}',this)" title="Clique para editar">${a.comment} <i class="ti ti-pencil" style="font-size:10px;color:var(--text-3);vertical-align:middle"></i></div>`:''}
+        <div class="act-title-txt ${a.done?'done':''}">${esc(a.title)}</div>
+        <div class="act-meta"><span ${od?'class="overdue"':''}>${fmtDate(a.date)}</span>${od?' · <span class="overdue">VENCIDA</span>':''}${a.owner?` · <span style="color:var(--text-3)">${esc(a.owner)}</span>`:''}</div>
+        ${a.comment?`<div style="font-size:12px;color:var(--text-2);margin-top:4px;background:var(--bg-card);border-radius:5px;padding:6px 8px;border:1px solid var(--border-md);white-space:pre-wrap;cursor:pointer;position:relative" onclick="toggleActivityComment('${d.id}','${a.id}',this)" title="Clique para editar">${esc(a.comment)} <i class="ti ti-pencil" style="font-size:10px;color:var(--text-3);vertical-align:middle"></i></div>`:''}
       </div>
       <div style="display:flex;gap:2px">
         <button onclick="toggleActivityComment('${d.id}','${a.id}',this)" style="background:none;border:none;cursor:pointer;color:${a.comment?'var(--accent)':'var(--text-3)'};font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px" title="${a.comment?'Editar comentário':'Adicionar comentário'}"><i class="ti ti-message"></i></button>
@@ -1525,10 +1531,10 @@ function renderDetail(d){
         <button class="btn-icon-sm" onclick="deleteContact(${JSON.stringify(d.id)},${i})" title="Excluir"><i class="ti ti-trash"></i></button>
       </div>
       <i class="ti ti-grip-horizontal contact-grip"></i>
-      <div class="contact-name" style="font-size:13px">${ct.name}</div>
-      ${ct.company?`<div style="font-size:12px;font-weight:600;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ct.company}</div>`:''}
-      ${ct.role?`<div class="contact-role" style="font-size:11px">${ct.role}</div>`:''}
-      ${ct.segment?`<div style="font-size:11px;color:var(--text-3)">${ct.segment}</div>`:''}
+      <div class="contact-name" style="font-size:13px">${esc(ct.name)}</div>
+      ${ct.company?`<div style="font-size:12px;font-weight:600;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ct.company)}</div>`:''}
+      ${ct.role?`<div class="contact-role" style="font-size:11px">${esc(ct.role)}</div>`:''}
+      ${ct.segment?`<div style="font-size:11px;color:var(--text-3)">${esc(ct.segment)}</div>`:''}
     </div>`).join('') : '<p style="font-size:13px;color:var(--text-3);margin-bottom:8px">Nenhum contato cadastrado.</p>';
 
   const _currentUserName = currentUser?(currentUser.user_metadata?.full_name||currentUser.email):'';
@@ -1540,19 +1546,19 @@ function renderDetail(d){
       <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:8px">
         <!-- Linha 1: Nome + MRR centralizados -->
         <div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap">
-          <div onclick="inlineEditText(${JSON.stringify(d.id)},'company',this)" title="Clique para editar" style="cursor:pointer;font-size:18px;font-weight:800;color:var(--accent);margin:0">${d.company}</div>
+          <div onclick="inlineEditText(${JSON.stringify(d.id)},'company',this)" title="Clique para editar" style="cursor:pointer;font-size:18px;font-weight:800;color:var(--accent);margin:0">${esc(d.company)}</div>
           <div onclick="inlineEditMrr(${JSON.stringify(d.id)},this)" title="Clique para editar MRR" style="cursor:pointer;font-size:18px;font-weight:800;color:var(--text)">${d.mrr?fmtMrr(d.mrr)+' MRR':'<span style="color:var(--text-3);font-size:13px;font-weight:400">+ MRR</span>'}</div>
         </div>
         <!-- Linha 2: campos com label - always shown -->
         <div style="display:flex;align-items:flex-start;justify-content:center;gap:16px;flex-wrap:wrap">
-          <div onclick="inlineEditOwner(${JSON.stringify(d.id)},this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Responsável</div><span class="info-val" style="font-size:12px;color:${d.owner?'var(--text-2)':'var(--text-3)'}">${d.owner||'—'}</span></div>
-          <div onclick="inlineEditSelect(${JSON.stringify(d.id)},'segment',getOpts('segmentos'),this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Segmento</div><span class="info-val" style="font-size:12px;color:${d.segment?'var(--text-2)':'var(--text-3)'}">${d.segment||'—'}</span></div>
-          <div onclick="inlineEditText(${JSON.stringify(d.id)},'subsegment',this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Sub-segmento</div><span class="info-val" style="font-size:12px;color:${d.subsegment?'var(--text-2)':'var(--text-3)'}">${d.subsegment||'—'}</span></div>
-          <div onclick="inlineEditSelect(${JSON.stringify(d.id)},'origem',getOpts('origens'),this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Origem</div><span class="info-val" style="font-size:12px;color:${d.origem?'var(--text-2)':'var(--text-3)'}">${d.origem||'—'}</span></div>
-          <div onclick="inlineEditSelect(${JSON.stringify(d.id)},'origem_detail',getOpts('origens_detalhadas'),this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Origem detalhada</div><span class="info-val" style="font-size:12px;color:${d.origem_detail?'var(--text-2)':'var(--text-3)'}">${d.origem_detail||'—'}</span></div>
-          <div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Estado</div><span onclick="inlineEditState(${JSON.stringify(d.id)},this.closest('div'))" class="info-val" style="cursor:pointer;font-size:12px;color:${d.state?'var(--text-2)':'var(--text-3)'}">${d.state||'—'}</span></div>
-          <div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Município</div><span onclick="inlineEditCity(${JSON.stringify(d.id)},this.closest('div'))" class="info-val" style="cursor:pointer;font-size:12px;color:${d.city?'var(--text-2)':'var(--text-3)'}">${d.city||'—'}</span></div>
-          <div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Etapa</div><select style="font-size:12px;font-weight:600;border:none;background:var(--bg-card);color:var(--text-2);font-family:var(--font);cursor:pointer;padding:2px 4px;text-align:center;border-radius:var(--radius)" onchange="changeStage(${JSON.stringify(d.id)},this.value)">${STAGES.map(s=>`<option value="${s}" ${s===d.stage?'selected':''}>${s}</option>`).join('')}</select></div>
+          <div onclick="inlineEditOwner(${JSON.stringify(d.id)},this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Responsável</div><span class="info-val" style="font-size:12px;color:${d.owner?'var(--text-2)':'var(--text-3)'}">${esc(d.owner||'—')}</span></div>
+          <div onclick="inlineEditSelect(${JSON.stringify(d.id)},'segment',getOpts('segmentos'),this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Segmento</div><span class="info-val" style="font-size:12px;color:${d.segment?'var(--text-2)':'var(--text-3)'}">${esc(d.segment||'—')}</span></div>
+          <div onclick="inlineEditText(${JSON.stringify(d.id)},'subsegment',this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Sub-segmento</div><span class="info-val" style="font-size:12px;color:${d.subsegment?'var(--text-2)':'var(--text-3)'}">${esc(d.subsegment||'—')}</span></div>
+          <div onclick="inlineEditSelect(${JSON.stringify(d.id)},'origem',getOpts('origens'),this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Origem</div><span class="info-val" style="font-size:12px;color:${d.origem?'var(--text-2)':'var(--text-3)'}">${esc(d.origem||'—')}</span></div>
+          <div onclick="inlineEditSelect(${JSON.stringify(d.id)},'origem_detail',getOpts('origens_detalhadas'),this)" style="cursor:pointer;text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Origem detalhada</div><span class="info-val" style="font-size:12px;color:${d.origem_detail?'var(--text-2)':'var(--text-3)'}">${esc(d.origem_detail||'—')}</span></div>
+          <div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Estado</div><span onclick="inlineEditState(${JSON.stringify(d.id)},this.closest('div'))" class="info-val" style="cursor:pointer;font-size:12px;color:${d.state?'var(--text-2)':'var(--text-3)'}">${esc(d.state||'—')}</span></div>
+          <div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Município</div><span onclick="inlineEditCity(${JSON.stringify(d.id)},this.closest('div'))" class="info-val" style="cursor:pointer;font-size:12px;color:${d.city?'var(--text-2)':'var(--text-3)'}">${esc(d.city||'—')}</span></div>
+          <div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Etapa</div><select style="font-size:12px;font-weight:600;border:none;background:var(--bg-card);color:var(--text-2);font-family:var(--font);cursor:pointer;padding:2px 4px;text-align:center;border-radius:var(--radius)" onchange="changeStage(${JSON.stringify(d.id)},this.value)">${STAGES.map(s=>`<option value="${esc(s)}" ${s===d.stage?'selected':''}>${esc(s)}</option>`).join('')}</select></div>
         </div>
       </div>
     </div>
@@ -1567,7 +1573,7 @@ function renderDetail(d){
             <button onclick="editSharepointLink(${JSON.stringify(d.id)},this)" style="background:none;border:none;color:var(--text-3);font-size:12px;cursor:pointer;padding:0;font-family:var(--font)" title="Editar link"><i class="ti ti-pencil"></i></button>
           </div>
           ${d.sharepoint_url
-            ? `<a href="${d.sharepoint_url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text-2);font-size:12px;font-weight:500;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"><i class="ti ti-brand-sharepoint" style="font-size:16px;color:#0078D4;flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Abrir pasta</span><i class="ti ti-external-link" style="font-size:11px;margin-left:auto;flex-shrink:0;opacity:.5"></i></a>`
+            ? `<a href="${esc(safeUrl(d.sharepoint_url))}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text-2);font-size:12px;font-weight:500;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"><i class="ti ti-brand-sharepoint" style="font-size:16px;color:#0078D4;flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Abrir pasta</span><i class="ti ti-external-link" style="font-size:11px;margin-left:auto;flex-shrink:0;opacity:.5"></i></a>`
             : `<div style="padding:7px 10px;background:var(--bg-surface);border:1px dashed var(--border-md);border-radius:var(--radius);font-size:12px;color:var(--text-3);text-align:center;cursor:pointer" onclick="editSharepointLink(${JSON.stringify(d.id)},this)">+ Adicionar link</div>`
           }
         </div>
@@ -1598,7 +1604,7 @@ function renderDetail(d){
               <div class="act-form">
                 <input id="act-title-inp" placeholder="Título da atividade"/>
                 <input type="date" id="act-date-inp" onclick="this.showPicker&&this.showPicker()" style="cursor:pointer"/>
-                <select id="act-owner-inp" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:6px 8px;background:var(--bg-card);color:var(--text)">${[...new Set([_currentUserName,...crmUsers].filter(Boolean))].map(u=>`<option value="${u}" ${u===_currentUserName?"selected":""}>${u}</option>`).join("")}</select>
+                <select id="act-owner-inp" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:6px 8px;background:var(--bg-card);color:var(--text)">${[...new Set([_currentUserName,...crmUsers].filter(Boolean))].map(u=>`<option value="${esc(u)}" ${u===_currentUserName?"selected":""}>${esc(u)}</option>`).join("")}</select>
                 <button class="btn-add" onclick="addActivity(${JSON.stringify(d.id)})"><i class="ti ti-plus"></i> Adicionar</button>
               </div>
             </div>
@@ -1713,7 +1719,7 @@ function editSharepointLink(dealId, triggerEl) {
   pop.style.cssText = 'position:fixed;top:'+topPos+'px;left:'+Math.max(8,leftPos)+'px;width:340px;z-index:2000;background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--radius-lg);box-shadow:0 8px 24px rgba(0,0,0,.18);padding:12px;display:flex;flex-direction:column;gap:8px;';
   pop.innerHTML = `
     <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px"><i class="ti ti-brand-sharepoint" style="color:#0078D4"></i> Link da pasta SharePoint</div>
-    <input id="sharepoint-url-inp" type="url" placeholder="https://bhub.sharepoint.com/..." value="${d.sharepoint_url||''}" style="font-size:12px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);outline:none;width:100%;background:var(--bg-surface);color:var(--text);font-family:var(--font)">
+    <input id="sharepoint-url-inp" type="url" placeholder="https://bhub.sharepoint.com/..." value="${esc(d.sharepoint_url||'')}" style="font-size:12px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);outline:none;width:100%;background:var(--bg-surface);color:var(--text);font-family:var(--font)">
     <div style="display:flex;gap:6px;justify-content:flex-end">
       <button onclick="this.closest('.sharepoint-popover').remove()" style="background:none;border:1px solid var(--border-md);color:var(--text-2);font-size:12px;font-weight:600;font-family:var(--font);padding:5px 12px;border-radius:var(--radius);cursor:pointer">Cancelar</button>
       <button id="sharepoint-save-btn" style="background:var(--accent);border:none;color:#fff;font-size:12px;font-weight:600;font-family:var(--font);padding:5px 12px;border-radius:var(--radius);cursor:pointer">Salvar</button>
@@ -1840,7 +1846,7 @@ async function confirmDeleteDeal(id) {
 // ── NEW / EDIT DEAL ──
 function populateFunilStages(selectedStage) {
   const sf = document.getElementById('nf-stage-field');
-  sf.innerHTML = STAGES.map(s=>`<option value="${s}" ${s===selectedStage?'selected':''}>${s}</option>`).join('');
+  sf.innerHTML = STAGES.map(s=>`<option value="${esc(s)}" ${s===selectedStage?'selected':''}>${esc(s)}</option>`).join('');
 }
 
 function openNewDeal(preStage) {
@@ -1955,9 +1961,9 @@ function expandContact(e, dealId, idx) {
   div.innerHTML = `
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
       <div>
-        <div style="font-size:16px;font-weight:700;color:var(--text)">${ct.name}</div>
-        ${ct.company?`<div style="font-size:13px;font-weight:600;color:var(--text-2);margin-top:2px">${ct.company}</div>`:''}
-        ${ct.segment?`<div style="font-size:11px;color:var(--text-3);margin-top:2px">${ct.segment}</div>`:''}
+        <div style="font-size:16px;font-weight:700;color:var(--text)">${esc(ct.name)}</div>
+        ${ct.company?`<div style="font-size:13px;font-weight:600;color:var(--text-2);margin-top:2px">${esc(ct.company)}</div>`:''}
+        ${ct.segment?`<div style="font-size:11px;color:var(--text-3);margin-top:2px">${esc(ct.segment)}</div>`:''}
       </div>
       <div style="display:flex;gap:6px;align-items:center">
         <button onclick="this.closest('.expanded-contact').remove();openEditContact(${JSON.stringify(dealId)},${idx})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:15px;padding:2px;display:flex;align-items:center" title="Editar"><i class="ti ti-pencil"></i></button>
@@ -1965,10 +1971,10 @@ function expandContact(e, dealId, idx) {
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
-      ${ct.role?`<div><span style="color:var(--text-3);font-size:11px">Cargo</span><div style="color:var(--text);font-weight:500">${ct.role}</div></div>`:''}
-      ${ct.email?`<div><span style="color:var(--text-3);font-size:11px">E-mail</span><div style="display:flex;align-items:center;gap:6px"><a href="mailto:${ct.email}" style="color:var(--accent);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ct.email}</a><button onclick="navigator.clipboard.writeText('${ct.email.replace(/'/g,'\\&#39;')}');toast('E-mail copiado!')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:12px;padding:2px;flex-shrink:0;display:flex;align-items:center" title="Copiar e-mail"><i class="ti ti-copy"></i></button></div></div>`:''}
-      ${ct.phone?`<div><span style="color:var(--text-3);font-size:11px">Telefone</span><div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text)">${ct.phone}</span><button onclick="navigator.clipboard.writeText('${ct.phone.replace(/'/g,'\\&#39;')}');toast('Telefone copiado!')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:12px;padding:2px;flex-shrink:0;display:flex;align-items:center" title="Copiar telefone"><i class="ti ti-copy"></i></button></div></div>`:''}
-      ${ct.linkedin?`<div><span style="color:var(--text-3);font-size:11px">LinkedIn</span><div><a href="${ct.linkedin.startsWith('http')?ct.linkedin:'https://'+ct.linkedin}" target="_blank" style="color:var(--accent);text-decoration:none;overflow:hidden;text-overflow:ellipsis;display:block;white-space:nowrap">${ct.linkedin}</a></div></div>`:''}
+      ${ct.role?`<div><span style="color:var(--text-3);font-size:11px">Cargo</span><div style="color:var(--text);font-weight:500">${esc(ct.role)}</div></div>`:''}
+      ${ct.email?`<div><span style="color:var(--text-3);font-size:11px">E-mail</span><div style="display:flex;align-items:center;gap:6px"><a href="mailto:${esc(ct.email)}" style="color:var(--accent);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ct.email)}</a><button onclick="navigator.clipboard.writeText(${jsArg(ct.email)});toast('E-mail copiado!')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:12px;padding:2px;flex-shrink:0;display:flex;align-items:center" title="Copiar e-mail"><i class="ti ti-copy"></i></button></div></div>`:''}
+      ${ct.phone?`<div><span style="color:var(--text-3);font-size:11px">Telefone</span><div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text)">${esc(ct.phone)}</span><button onclick="navigator.clipboard.writeText(${jsArg(ct.phone)});toast('Telefone copiado!')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:12px;padding:2px;flex-shrink:0;display:flex;align-items:center" title="Copiar telefone"><i class="ti ti-copy"></i></button></div></div>`:''}
+      ${ct.linkedin?`<div><span style="color:var(--text-3);font-size:11px">LinkedIn</span><div><a href="${esc(ct.linkedin.startsWith('http')?safeUrl(ct.linkedin):'https://'+ct.linkedin)}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;overflow:hidden;text-overflow:ellipsis;display:block;white-space:nowrap">${esc(ct.linkedin)}</a></div></div>`:''}
       ${ct.website?`<div><span style="color:var(--text-3);font-size:11px">Site</span><div><a href="${ct.website.startsWith('http')?ct.website:'https://'+ct.website}" target="_blank" style="color:var(--accent);text-decoration:none">${ct.website}</a></div></div>`:''}
     </div>`;
   mainScroll.insertBefore(div, mainScroll.firstChild);
@@ -2095,7 +2101,7 @@ function toggleActivityComment(dealId, actId, triggerBtn) {
     pop.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:480px;z-index:2000;background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--radius-lg);box-shadow:0 8px 24px rgba(0,0,0,.18);padding:10px;';
   }
   pop.innerHTML = `<div style="display:flex;gap:6px;align-items:flex-end">
-    <textarea id="comment-inp-${actId}" placeholder="Adicione um comentário..." style="flex:1;min-height:100px;max-height:260px;font-size:13px;padding:8px 10px;resize:vertical;overflow-y:auto;font-family:var(--font);background:var(--bg-surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text)">${a.comment||''}</textarea>
+    <textarea id="comment-inp-${actId}" placeholder="Adicione um comentário..." style="flex:1;min-height:100px;max-height:260px;font-size:13px;padding:8px 10px;resize:vertical;overflow-y:auto;font-family:var(--font);background:var(--bg-surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text)">${esc(a.comment||'')}</textarea>
     <button class="act-comment-save-btn" style="background:var(--accent);border:none;color:#fff;font-size:11px;font-weight:600;font-family:var(--font);padding:7px 12px;border-radius:var(--radius);cursor:pointer;white-space:nowrap;align-self:flex-end">Salvar</button>
   </div>`;
   document.body.appendChild(pop);
@@ -2225,7 +2231,7 @@ async function duplicateDeal(id) {
     stage: src.stage,
     funil_id: src.funil_id || 'default',
     user_id: currentUser.id,
-    history: JSON.stringify([{date: new Date().toLocaleString('pt-BR'), type:'Nota', text:'Deal duplicado de "'+src.company+'"'}]),
+    history: JSON.stringify([{date: new Date().toLocaleString('pt-BR'), type:'Nota', text:'Deal duplicado de "'+esc(src.company)+'"'}]),
     activities: JSON.stringify([]),
     contacts: JSON.stringify([])
   };
@@ -2419,7 +2425,7 @@ function renderValHistHtml(valId) {
       const doneDate = a.done_at ? new Date(a.done_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}) : '';
       return '<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--bg-surface);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:4px;opacity:.6">'+
         '<div class="act-check done"><i class="ti ti-check"></i></div>'+
-        '<div style="flex:1"><div style="font-size:13px;color:var(--text-3);text-decoration:line-through">'+a.title+'</div>'+
+        '<div style="flex:1"><div style="font-size:13px;color:var(--text-3);text-decoration:line-through">'+esc(a.title)+'</div>'+
           (doneDate?'<div style="font-size:11px;color:var(--text-3)">Concluída em '+doneDate+'</div>':'')+
         '</div>'+
       '</div>';
@@ -2432,12 +2438,12 @@ function renderValuationActivitiesHtml(valId) {
   return acts.map(a => {
     const od = !a.done && isOverdue(a.date);
     const commentHtml = a.comment ?
-      '<div style="font-size:12px;color:var(--text-2);margin-top:4px;background:var(--bg-card);border-radius:5px;padding:6px 8px;border:1px solid var(--border-md);white-space:pre-wrap;cursor:pointer" onclick="toggleValActComment(\''+valId+'\',\''+a.id+'\',this)" title="Clique para editar">'+a.comment+' <i class="ti ti-pencil" style="font-size:10px;color:var(--text-3);vertical-align:middle"></i></div>' : '';
+      '<div style="font-size:12px;color:var(--text-2);margin-top:4px;background:var(--bg-card);border-radius:5px;padding:6px 8px;border:1px solid var(--border-md);white-space:pre-wrap;cursor:pointer" onclick="toggleValActComment(\''+valId+'\',\''+a.id+'\',this)" title="Clique para editar">'+esc(a.comment)+' <i class="ti ti-pencil" style="font-size:10px;color:var(--text-3);vertical-align:middle"></i></div>' : '';
     return '<div class="act-item" data-val-act-id="'+a.id+'">'+
       '<div class="act-check" onclick="toggleActFromValuation(\''+valId+'\',\''+a.id+'\')"><i class="ti ti-check"></i></div>'+
       '<div style="flex:1">'+
-        '<div class="act-title-txt">'+a.title+'</div>'+
-        '<div class="act-meta"><span '+(od?'class="overdue"':'')+'>'+fmtDate(a.date)+'</span>'+(od?' · <span class="overdue">VENCIDA</span>':'')+(a.owner?' · <span style="color:var(--text-3)">'+a.owner+'</span>':'')+
+        '<div class="act-title-txt">'+esc(a.title)+'</div>'+
+        '<div class="act-meta"><span '+(od?'class="overdue"':'')+'>'+fmtDate(a.date)+'</span>'+(od?' · <span class="overdue">VENCIDA</span>':'')+(a.owner?' · <span style="color:var(--text-3)">'+esc(a.owner)+'</span>':'')+
         '</div>'+
         commentHtml+
       '</div>'+
@@ -2553,7 +2559,7 @@ function toggleValActComment(valId, actId, triggerEl) {
   const leftPos = Math.min(rect.left, window.innerWidth - 500);
   pop.style.cssText = 'position:fixed;top:'+topPos+'px;left:'+Math.max(8,leftPos)+'px;width:480px;z-index:2000;background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--radius-lg);box-shadow:0 8px 24px rgba(0,0,0,.18);padding:10px;display:flex;flex-direction:column;gap:8px;';
   pop.innerHTML = '<div style="display:flex;gap:6px;align-items:flex-end"><textarea id="val-comment-inp-'+actId+'" placeholder="Adicione um comentário..." style="flex:1;min-height:100px;max-height:260px;font-size:13px;padding:8px 10px;resize:vertical;overflow-y:auto;font-family:var(--font);background:var(--bg-surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text)">'+
-    (a.comment||'')+'</textarea><button class="act-comment-save-btn" style="background:var(--accent);border:none;color:#fff;font-size:11px;font-weight:600;font-family:var(--font);padding:7px 12px;border-radius:var(--radius);cursor:pointer;white-space:nowrap;align-self:flex-end">Salvar</button></div>';
+    esc(a.comment||'')+'</textarea><button class="act-comment-save-btn" style="background:var(--accent);border:none;color:#fff;font-size:11px;font-weight:600;font-family:var(--font);padding:7px 12px;border-radius:var(--radius);cursor:pointer;white-space:nowrap;align-self:flex-end">Salvar</button></div>';
   document.body.appendChild(pop);
   const inp = pop.querySelector('#val-comment-inp-'+actId);
   inp.focus();
@@ -2579,7 +2585,7 @@ function editValSharepoint(valId, triggerEl) {
   const leftPos = Math.min(rect.left - 200, window.innerWidth - 360);
   pop.style.cssText = 'position:fixed;top:'+topPos+'px;left:'+Math.max(8,leftPos)+'px;width:340px;z-index:2000;background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--radius-lg);box-shadow:0 8px 24px rgba(0,0,0,.18);padding:12px;display:flex;flex-direction:column;gap:8px;';
   pop.innerHTML = '<div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px"><i class="ti ti-brand-sharepoint" style="color:#0078D4"></i> Link da pasta SharePoint</div>'+
-    '<input id="val-sharepoint-inp" type="url" placeholder="https://bhub.sharepoint.com/..." value="'+(v.sharepoint_url||'')+'" style="font-size:12px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);outline:none;width:100%;background:var(--bg-surface);color:var(--text);font-family:var(--font)">'+
+    '<input id="val-sharepoint-inp" type="url" placeholder="https://bhub.sharepoint.com/..." value="'+esc(v.sharepoint_url||'')+'" style="font-size:12px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);outline:none;width:100%;background:var(--bg-surface);color:var(--text);font-family:var(--font)">'+
     '<div style="display:flex;gap:6px;justify-content:flex-end">'+
       '<button onclick="this.closest(\'.sharepoint-popover\').remove()" style="background:none;border:1px solid var(--border-md);color:var(--text-2);font-size:12px;font-weight:600;font-family:var(--font);padding:5px 12px;border-radius:var(--radius);cursor:pointer">Cancelar</button>'+
       '<button id="val-sp-save" style="background:var(--accent);border:none;color:#fff;font-size:12px;font-weight:600;font-family:var(--font);padding:5px 12px;border-radius:var(--radius);cursor:pointer">Salvar</button>'+
@@ -2629,7 +2635,7 @@ function openValuationDeal(valId) {
     { field: 'check_qa_respondido', label: 'Q&A respondido' },
   ];
   const mrrHtml = v.mrr ? '<div style="font-size:14px;font-weight:700;color:var(--text);margin-top:2px">'+fmtMrr(v.mrr)+' MRR</div>' : '';
-  const stageOpts = VALUATION_STAGES.map(s => '<option value="'+s+'"'+(s===v.valuation_stage?' selected':'')+'>'+s+'</option>').join('');
+  const stageOpts = VALUATION_STAGES.map(s => '<option value="'+esc(s)+'\"'+(s===v.valuation_stage?' selected':'')+'>'+esc(s)+'</option>').join('');
   const checksHtml = checks.map(ck => {
     const active = v[ck.field];
     const borderColor = active ? 'var(--accent)' : 'var(--border)';
@@ -2645,7 +2651,7 @@ function openValuationDeal(valId) {
   // Buscar dados completos do deal original para segmento, estado, município
   const deal = deals.find(x => x.id == v.deal_id);
   const spHtml = v.sharepoint_url
-    ? '<a href="'+v.sharepoint_url+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text-2);font-size:12px;font-weight:500" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'"><i class="ti ti-brand-sharepoint" style="font-size:16px;color:#0078D4;flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Abrir pasta</span><i class="ti ti-external-link" style="font-size:11px;margin-left:auto;flex-shrink:0;opacity:.5"></i></a>'
+    ? '<a href="'+esc(safeUrl(v.sharepoint_url))+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text-2);font-size:12px;font-weight:500" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'"><i class="ti ti-brand-sharepoint" style="font-size:16px;color:#0078D4;flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Abrir pasta</span><i class="ti ti-external-link" style="font-size:11px;margin-left:auto;flex-shrink:0;opacity:.5"></i></a>'
     : '<div style="padding:7px 10px;background:var(--bg-surface);border:1px dashed var(--border-md);border-radius:var(--radius);font-size:12px;color:var(--text-3);text-align:center;cursor:pointer" onclick="editValSharepoint(\''+v.id+'\',this)">+ Adicionar link</div>';
   document.getElementById('valuation-modal-content').innerHTML =
     // TOP BAR igual ao pipeline
@@ -2653,13 +2659,13 @@ function openValuationDeal(valId) {
       '<button class="modal-close" onclick="document.getElementById(\'modal-valuation-deal\').classList.remove(\'open\')" style="flex-shrink:0;margin-top:4px"><i class="ti ti-arrow-left"></i></button>'+
       '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:8px">'+
         '<div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap">'+
-          '<div style="font-size:18px;font-weight:800;color:var(--accent)">'+v.company+'</div>'+
+          '<div style="font-size:18px;font-weight:800;color:var(--accent)">'+esc(v.company)+'</div>'+
           (v.mrr?'<div style="font-size:18px;font-weight:800;color:var(--text)">'+fmtMrr(v.mrr)+' MRR</div>':'')+
         '</div>'+
         '<div style="display:flex;align-items:flex-start;justify-content:center;gap:16px;flex-wrap:wrap">'+
-          (deal&&deal.segment?'<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Segmento</div><span style="font-size:12px;color:var(--text-2)">'+deal.segment+'</span></div>':'')+
-          (deal&&deal.state?'<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Estado</div><span style="font-size:12px;color:var(--text-2)">'+deal.state+'</span></div>':'')+
-          (deal&&deal.city?'<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Município</div><span style="font-size:12px;color:var(--text-2)">'+deal.city+'</span></div>':'')+
+          (deal&&deal.segment?'<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Segmento</div><span style="font-size:12px;color:var(--text-2)">'+esc(deal.segment)+'</span></div>':'')+
+          (deal&&deal.state?'<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Estado</div><span style="font-size:12px;color:var(--text-2)">'+esc(deal.state)+'</span></div>':'')+
+          (deal&&deal.city?'<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Município</div><span style="font-size:12px;color:var(--text-2)">'+esc(deal.city)+'</span></div>':'')+
           '<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Etapa de Análise</div>'+
             '<select onchange="updateValuationStage(\''+v.id+'\',this.value)" style="font-size:12px;font-weight:600;border:none;background:var(--bg-card);color:var(--text-2);font-family:var(--font);cursor:pointer;padding:2px 4px;text-align:center;border-radius:var(--radius)">'+stageOpts+'</select>'+
           '</div>'+
@@ -2723,7 +2729,7 @@ function renderValuation() {
     lane.innerHTML = `
       <div class="val-lane-head" style="background:${col.bg};border-bottom:2px solid ${col.bd}">
         <div class="lane-head-left">
-          <div class="lane-head-title" style="color:${col.text}">${stage}</div>
+          <div class="lane-head-title" style="color:${col.text}">${esc(stage)}</div>
         </div>
         <span class="lane-count" style="color:${col.text}">${ds.length}</span>
       </div>
@@ -2732,12 +2738,12 @@ function renderValuation() {
           const done = [v.check_formulario,v.check_dre,v.check_qa_elaborado,v.check_qa_respondido].filter(Boolean).length;
           const deal = deals.find(x => x.id == v.deal_id);
           const mrrHtml = v.mrr ? '<div class="deal-mrr">'+fmtMrr(v.mrr)+' MRR</div>' : '';
-          const seg = deal&&deal.segment ? '<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">'+deal.segment+'</span>' : '';
-          const st = deal&&deal.state ? '<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">'+deal.state+'</span>' : '';
-          const ct = deal&&deal.city ? '<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">'+deal.city+'</span>' : '';
+          const seg = deal&&deal.segment ? '<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">'+esc(deal.segment)+'</span>' : '';
+          const st = deal&&deal.state ? '<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">'+esc(deal.state)+'</span>' : '';
+          const ct = deal&&deal.city ? '<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">'+esc(deal.city)+'</span>' : '';
           const tagsHtml = seg+st+ct;
           return '<div class="val-card" data-val-id="'+v.id+'" draggable="true">'+
-            '<div class="deal-company">'+v.company+'</div>'+
+            '<div class="deal-company">'+esc(v.company)+'</div>'+
             mrrHtml+
             (tagsHtml?'<div class="deal-tags">'+tagsHtml+'</div>':'')+
             '<div style="margin-top:8px;display:flex;align-items:center;gap:6px">'+
@@ -2753,7 +2759,7 @@ function renderValuation() {
                 const isToday = next.date === today;
                 const dotColor = od?'dot-red':isToday?'dot-green':'dot-gray';
                 const txtStyle = od?'color:#EF4444;font-weight:600':isToday?'color:#22C55E;font-weight:600':'';
-                return '<div class="deal-footer"><div class="deal-activity"><span class="activity-dot '+dotColor+'"></span><span style="'+txtStyle+'">'+next.title+'</span></div></div>';
+                return '<div class="deal-footer"><div class="deal-activity"><span class="activity-dot '+dotColor+'"></span><span style="'+txtStyle+'">'+esc(next.title)+'</span></div></div>';
               }
               return '<div class="deal-footer"><div class="deal-activity"><span class="activity-dot" style="background:#F59E0B"></span><span style="color:#F59E0B;font-size:11px">Sem atividades</span></div></div>';
             })()+'</div>';
@@ -2862,10 +2868,10 @@ function renderDilActivitiesHtml(dilId) {
   if (!acts.length) return '<p style="font-size:13px;color:var(--text-3)">Nenhuma atividade pendente.</p>';
   return acts.map(a => {
     const od = !a.done && isOverdue(a.date);
-    const cm = a.comment ? '<div style="font-size:12px;color:var(--text-2);margin-top:4px;background:var(--bg-card);border-radius:5px;padding:6px 8px;border:1px solid var(--border-md);white-space:pre-wrap;cursor:pointer" onclick="toggleDilActComment(\''+dilId+'\',\''+a.id+'\',this)">'+a.comment+' <i class="ti ti-pencil" style="font-size:10px;color:var(--text-3);vertical-align:middle"></i></div>' : '';
+    const cm = a.comment ? '<div style="font-size:12px;color:var(--text-2);margin-top:4px;background:var(--bg-card);border-radius:5px;padding:6px 8px;border:1px solid var(--border-md);white-space:pre-wrap;cursor:pointer" onclick="toggleDilActComment(\''+dilId+'\',\''+a.id+'\',this)">'+esc(a.comment)+' <i class="ti ti-pencil" style="font-size:10px;color:var(--text-3);vertical-align:middle"></i></div>' : '';
     return '<div class="act-item" data-dil-act-id="'+a.id+'">'+
       '<div class="act-check" onclick="toggleActFromDiligence(\''+dilId+'\',\''+a.id+'\')"><i class="ti ti-check"></i></div>'+
-      '<div style="flex:1"><div class="act-title-txt">'+a.title+'</div><div class="act-meta"><span '+(od?'class="overdue"':'')+'>'+fmtDate(a.date)+'</span>'+(od?' · <span class="overdue">VENCIDA</span>':'')+(a.owner?' · <span style="color:var(--text-3)">'+a.owner+'</span>':'')+
+      '<div style="flex:1"><div class="act-title-txt">'+esc(a.title)+'</div><div class="act-meta"><span '+(od?'class="overdue"':'')+'>'+fmtDate(a.date)+'</span>'+(od?' · <span class="overdue">VENCIDA</span>':'')+(a.owner?' · <span style="color:var(--text-3)">'+esc(a.owner)+'</span>':'')+
       '</div>'+cm+'</div>'+
       '<div style="display:flex;gap:2px">'+
         '<button onclick="toggleDilActComment(\''+dilId+'\',\''+a.id+'\',this)" style="background:none;border:none;cursor:pointer;color:'+(a.comment?'var(--accent)':'var(--text-3)')+';font-size:14px;padding:4px;display:flex;align-items:center;border-radius:5px"><i class="ti ti-message"></i></button>'+
@@ -2882,7 +2888,7 @@ function renderDilHistHtml(dilId) {
       const dd = a.done_at ? new Date(a.done_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}) : '';
       return '<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--bg-surface);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:4px;opacity:.6">'+
         '<div class="act-check done"><i class="ti ti-check"></i></div>'+
-        '<div style="flex:1"><div style="font-size:13px;color:var(--text-3);text-decoration:line-through">'+a.title+'</div>'+(dd?'<div style="font-size:11px;color:var(--text-3)">Concluída em '+dd+'</div>':'')+
+        '<div style="flex:1"><div style="font-size:13px;color:var(--text-3);text-decoration:line-through">'+esc(a.title)+'</div>'+(dd?'<div style="font-size:11px;color:var(--text-3)">Concluída em '+dd+'</div>':'')+
         '</div></div>';
     }).join('');
 }
@@ -2948,7 +2954,7 @@ function toggleDilActComment(dilId, actId, triggerEl) {
   const pop = document.createElement('div'); pop.className='act-comment-popover';
   const rect = triggerEl.getBoundingClientRect();
   pop.style.cssText='position:fixed;top:'+(rect.bottom+6)+'px;left:'+Math.max(8,Math.min(rect.left,window.innerWidth-500))+'px;width:480px;z-index:2000;background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--radius-lg);box-shadow:0 8px 24px rgba(0,0,0,.18);padding:10px;display:flex;flex-direction:column;gap:8px;';
-  pop.innerHTML='<div style="display:flex;gap:6px;align-items:flex-end"><textarea id="dil-comment-inp-'+actId+'" placeholder="Adicione um comentário..." style="flex:1;min-height:100px;max-height:260px;font-size:13px;padding:8px 10px;resize:vertical;overflow-y:auto;font-family:var(--font);background:var(--bg-surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text)">'+(a.comment||'')+'</textarea><button class="act-comment-save-btn" style="background:var(--accent);border:none;color:#fff;font-size:11px;font-weight:600;font-family:var(--font);padding:7px 12px;border-radius:var(--radius);cursor:pointer;white-space:nowrap;align-self:flex-end">Salvar</button></div>';
+  pop.innerHTML='<div style="display:flex;gap:6px;align-items:flex-end"><textarea id="dil-comment-inp-'+actId+'" placeholder="Adicione um comentário..." style="flex:1;min-height:100px;max-height:260px;font-size:13px;padding:8px 10px;resize:vertical;overflow-y:auto;font-family:var(--font);background:var(--bg-surface);border:1px solid var(--border-md);border-radius:var(--radius);color:var(--text)">'+esc(a.comment||'')+'</textarea><button class="act-comment-save-btn" style="background:var(--accent);border:none;color:#fff;font-size:11px;font-weight:600;font-family:var(--font);padding:7px 12px;border-radius:var(--radius);cursor:pointer;white-space:nowrap;align-self:flex-end">Salvar</button></div>';
   document.body.appendChild(pop);
   const inp=pop.querySelector('#dil-comment-inp-'+actId); inp.focus();
   pop.querySelector('.act-comment-save-btn').addEventListener('click',async()=>{ a.comment=inp.value.trim(); await sb.from('diligence_activities').update({comment:a.comment||null}).eq('id',actId); pop.remove(); document.getElementById('dil-act-list').innerHTML=renderDilActivitiesHtml(dilId); toast('Comentário salvo!'); });
@@ -2961,7 +2967,7 @@ function editValSharepointDil(dilId, triggerEl) {
   const rect = triggerEl.getBoundingClientRect();
   pop.style.cssText='position:fixed;top:'+(rect.bottom+6)+'px;left:'+Math.max(8,Math.min(rect.left-200,window.innerWidth-360))+'px;width:340px;z-index:2000;background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--radius-lg);box-shadow:0 8px 24px rgba(0,0,0,.18);padding:12px;display:flex;flex-direction:column;gap:8px;';
   pop.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px"><i class="ti ti-brand-sharepoint" style="color:#0078D4"></i> Link da pasta SharePoint</div>'+
-    '<input id="dil-sp-inp" type="url" placeholder="https://bhub.sharepoint.com/..." value="'+(v.sharepoint_url||'')+'" style="font-size:12px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);outline:none;width:100%;background:var(--bg-surface);color:var(--text);font-family:var(--font)">'+
+    '<input id="dil-sp-inp" type="url" placeholder="https://bhub.sharepoint.com/..." value="'+esc(v.sharepoint_url||'')+'" style="font-size:12px;padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--radius);outline:none;width:100%;background:var(--bg-surface);color:var(--text);font-family:var(--font)">'+
     '<div style="display:flex;gap:6px;justify-content:flex-end"><button onclick="this.closest(\'.sharepoint-popover\').remove()" style="background:none;border:1px solid var(--border-md);color:var(--text-2);font-size:12px;font-weight:600;font-family:var(--font);padding:5px 12px;border-radius:var(--radius);cursor:pointer">Cancelar</button><button id="dil-sp-save" style="background:var(--accent);border:none;color:#fff;font-size:12px;font-weight:600;font-family:var(--font);padding:5px 12px;border-radius:var(--radius);cursor:pointer">Salvar</button></div>';
   document.body.appendChild(pop);
   const inp=pop.querySelector('#dil-sp-inp'); inp.focus(); inp.select();
@@ -2979,7 +2985,7 @@ async function deleteDiligenceDeal(dilId) {
 function openDiligenceDeal(dilId) {
   const v = diligenceDeals.find(x=>x.id===dilId); if(!v)return;
   const deal = deals.find(x=>x.id==v.deal_id);
-  const stageOpts = DILIGENCE_STAGES.map(s=>'<option value="'+s+'"'+(s===v.diligence_stage?' selected':'')+'>'+s+'</option>').join('');
+  const stageOpts = DILIGENCE_STAGES.map(s=>'<option value="'+esc(s)+'\"'+(s===v.diligence_stage?' selected':'')+'>'+esc(s)+'</option>').join('');
   const checksHtml = DILIGENCE_CHECKLIST.map(ck => {
     const active = v[ck.field];
     return '<div onclick="toggleDiligenceCheck(\''+v.id+'\',\''+ck.field+'\')" style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg-surface);border:1px solid '+(active?'var(--accent)':'var(--border)')+';border-radius:var(--radius);cursor:pointer;transition:border-color .15s">'+
@@ -2987,7 +2993,7 @@ function openDiligenceDeal(dilId) {
       '</div><span style="font-size:12px;font-weight:500;color:'+(active?'var(--accent)':'var(--text-2)')+'">'+ck.label+'</span></div>';
   }).join('');
   const spHtml = v.sharepoint_url
-    ? '<a href="'+v.sharepoint_url+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text-2);font-size:12px;font-weight:500" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'"><i class="ti ti-brand-sharepoint" style="font-size:16px;color:#0078D4;flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Abrir pasta</span><i class="ti ti-external-link" style="font-size:11px;margin-left:auto;flex-shrink:0;opacity:.5"></i></a>'
+    ? '<a href="'+esc(safeUrl(v.sharepoint_url))+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text-2);font-size:12px;font-weight:500" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'"><i class="ti ti-brand-sharepoint" style="font-size:16px;color:#0078D4;flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Abrir pasta</span><i class="ti ti-external-link" style="font-size:11px;margin-left:auto;flex-shrink:0;opacity:.5"></i></a>'
     : '<div style="padding:7px 10px;background:var(--bg-surface);border:1px dashed var(--border-md);border-radius:var(--radius);font-size:12px;color:var(--text-3);text-align:center;cursor:pointer" onclick="editValSharepointDil(\''+v.id+'\',this)">+ Adicionar link</div>';
   const doneCount = DILIGENCE_CHECKLIST.filter(ck=>v[ck.field]).length;
   document.getElementById('diligence-modal-content').innerHTML =
@@ -2995,13 +3001,13 @@ function openDiligenceDeal(dilId) {
       '<button class="modal-close" onclick="document.getElementById(\'modal-diligence-deal\').classList.remove(\'open\')" style="flex-shrink:0;margin-top:4px"><i class="ti ti-arrow-left"></i></button>'+
       '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:8px">'+
         '<div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap">'+
-          '<div style="font-size:18px;font-weight:800;color:var(--accent)">'+v.company+'</div>'+
+          '<div style="font-size:18px;font-weight:800;color:var(--accent)">'+esc(v.company)+'</div>'+
           (v.mrr?'<div style="font-size:18px;font-weight:800;color:var(--text)">'+fmtMrr(v.mrr)+' MRR</div>':'')+
         '</div>'+
         '<div style="display:flex;align-items:flex-start;justify-content:center;gap:16px;flex-wrap:wrap">'+
-          (deal&&deal.segment?'<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Segmento</div><span style="font-size:12px;color:var(--text-2)">'+deal.segment+'</span></div>':'')+
-          (deal&&deal.state?'<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Estado</div><span style="font-size:12px;color:var(--text-2)">'+deal.state+'</span></div>':'')+
-          (deal&&deal.city?'<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Município</div><span style="font-size:12px;color:var(--text-2)">'+deal.city+'</span></div>':'')+
+          (deal&&deal.segment?'<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Segmento</div><span style="font-size:12px;color:var(--text-2)">'+esc(deal.segment)+'</span></div>':'')+
+          (deal&&deal.state?'<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Estado</div><span style="font-size:12px;color:var(--text-2)">'+esc(deal.state)+'</span></div>':'')+
+          (deal&&deal.city?'<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Município</div><span style="font-size:12px;color:var(--text-2)">'+esc(deal.city)+'</span></div>':'')+
           '<div style="text-align:center"><div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Etapa de Diligência</div>'+
             '<select onchange="updateDiligenceStage(\''+v.id+'\',this.value)" style="font-size:12px;font-weight:600;border:none;background:var(--bg-card);color:var(--text-2);font-family:var(--font);cursor:pointer;padding:2px 4px;text-align:center;border-radius:var(--radius)">'+stageOpts+'</select>'+
           '</div>'+
@@ -3039,23 +3045,23 @@ function renderDiligence() {
     const col = DILIGENCE_COLORS[si];
     const ds = diligenceDeals.filter(v=>(v.diligence_stage||DILIGENCE_STAGES[0])===stage).sort((a,b)=>(parseFloat(b.mrr)||0)-(parseFloat(a.mrr)||0));
     const lane = document.createElement('div'); lane.className='val-lane';
-    lane.innerHTML = '<div class="val-lane-head" style="background:'+col.bg+';border-bottom:2px solid '+col.bd+';min-height:64px"><div class="lane-head-left"><div class="lane-head-title" style="color:'+col.text+'">'+stage+'</div></div><span class="lane-count" style="color:'+col.text+'">'+ds.length+'</span></div>'+
+    lane.innerHTML = '<div class="val-lane-head" style="background:'+col.bg+';border-bottom:2px solid '+col.bd+';min-height:64px"><div class="lane-head-left"><div class="lane-head-title" style="color:'+esc(col.text)+'">'+stage+'</div></div><span class="lane-count" style="color:'+esc(col.text)+'">'+ds.length+'</span></div>'+
       '<div class="val-lane-body">'+
       ds.map(v => {
         const deal=deals.find(x=>x.id==v.deal_id);
         const done=DILIGENCE_CHECKLIST.filter(ck=>v[ck.field]).length;
         const total=DILIGENCE_CHECKLIST.length;
         const mrrHtml=v.mrr?'<div class="deal-mrr">'+fmtMrr(v.mrr)+' MRR</div>':'';
-        const seg=deal&&deal.segment?'<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">'+deal.segment+'</span>':'';
-        const st=deal&&deal.state?'<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">'+deal.state+'</span>':'';
-        const ct=deal&&deal.city?'<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">'+deal.city+'</span>':'';
+        const seg=deal&&deal.segment?'<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">'+esc(deal.segment)+'</span>':'';
+        const st=deal&&deal.state?'<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">'+esc(deal.state)+'</span>':'';
+        const ct=deal&&deal.city?'<span class="deal-tag" style="background:var(--bg-surface);color:var(--text-2);border:1px solid var(--border)">'+esc(deal.city)+'</span>':'';
         const acts=(dilActivitiesCache[v.id]||[]).filter(a=>!a.done&&a.date).sort((a,b)=>a.date.localeCompare(b.date));
         const next=acts[0]; const today=todayLocal();
         let actFooter='';
-        if(next){const od=isOverdue(next.date);const it=next.date===today;actFooter='<div class="deal-footer"><div class="deal-activity"><span class="activity-dot '+(od?'dot-red':it?'dot-green':'dot-gray')+'"></span><span style="'+(od?'color:#EF4444;font-weight:600':it?'color:#22C55E;font-weight:600':'')+'">'+next.title+'</span></div></div>';}
+        if(next){const od=isOverdue(next.date);const it=next.date===today;actFooter='<div class="deal-footer"><div class="deal-activity"><span class="activity-dot '+(od?'dot-red':it?'dot-green':'dot-gray')+'"></span><span style="'+(od?'color:#EF4444;font-weight:600':it?'color:#22C55E;font-weight:600':'')+'">'+esc(next.title)+'</span></div></div>';}
         else{actFooter='<div class="deal-footer"><div class="deal-activity"><span class="activity-dot" style="background:#F59E0B"></span><span style="color:#F59E0B;font-size:11px">Sem atividades</span></div></div>';}
         return '<div class="val-card" data-dil-id="'+v.id+'" draggable="true">'+
-          '<div class="deal-company">'+v.company+'</div>'+mrrHtml+
+          '<div class="deal-company">'+esc(v.company)+'</div>'+mrrHtml+
           ((seg+st+ct)?'<div class="deal-tags">'+(seg+st+ct)+'</div>':'')+
           '<div style="margin-top:8px;display:flex;align-items:center;gap:6px"><div style="flex:1;height:3px;background:var(--border);border-radius:2px"><div style="height:100%;width:'+(done/total*100)+'%;background:var(--accent);border-radius:2px"></div></div><span style="font-size:10px;color:var(--text-3);font-weight:600">'+done+'/'+total+'</span></div>'+
           actFooter+'</div>';
@@ -3141,7 +3147,7 @@ function renderIntel() {
   const barRow = (label, count, mrr, maxCount, color) =>
     '<div style="margin-bottom:10px">'+
       '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">'+
-        '<span style="font-size:12px;color:var(--text-2);font-weight:500">'+label+'</span>'+
+        '<span style="font-size:12px;color:var(--text-2);font-weight:500">'+esc(label)+'</span>'+
         '<span style="font-size:12px;color:var(--text-3)">'+count+' · R$'+fmtNum(mrr)+'</span>'+
       '</div>'+
       '<div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">'+
@@ -3160,13 +3166,13 @@ function renderIntel() {
     '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:28px;padding:16px;background:var(--bg-surface);border-radius:var(--radius-lg);border:1px solid var(--border)">'+
       '<div><label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">Segmento</label>'+
         '<select id="fi-seg" onchange="renderIntel()" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:6px 10px;background:var(--bg-card);color:var(--text)">'+
-          '<option value="">Todos</option>'+segs.map(s=>'<option value="'+s+'"'+(s===fSeg?' selected':'')+'>'+s+'</option>').join('')+'</select></div>'+
+          '<option value="">Todos</option>'+segs.map(s=>'<option value="'+esc(s)+'\"'+(s===fSeg?' selected':'')+'>'+esc(s)+'</option>').join('')+'</select></div>'+
       '<div><label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">Estado</label>'+
         '<select id="fi-state" onchange="renderIntel()" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:6px 10px;background:var(--bg-card);color:var(--text)">'+
-          '<option value="">Todos</option>'+states.map(s=>'<option value="'+s+'"'+(s===fState?' selected':'')+'>'+s+'</option>').join('')+'</select></div>'+
+          '<option value="">Todos</option>'+states.map(s=>'<option value="'+esc(s)+'\"'+(s===fState?' selected':'')+'>'+esc(s)+'</option>').join('')+'</select></div>'+
       '<div><label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">Município</label>'+
         '<select id="fi-city" onchange="renderIntel()" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:6px 10px;background:var(--bg-card);color:var(--text)">'+
-          '<option value="">Todos</option>'+cities.map(c=>'<option value="'+c+'"'+(c===fCity?' selected':'')+'>'+c+'</option>').join('')+'</select></div>'+
+          '<option value="">Todos</option>'+cities.map(c=>'<option value="'+esc(c)+'\"'+(c===fCity?' selected':'')+'>'+esc(c)+'</option>').join('')+'</select></div>'+
       '<div><label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">Faixa de MRR</label>'+
         '<select id="fi-mrr" onchange="renderIntel()" style="font-family:var(--font);font-size:13px;border:1px solid var(--border-md);border-radius:var(--radius);padding:6px 10px;background:var(--bg-card);color:var(--text)">'+
           '<option value="">Todas</option>'+
@@ -3241,18 +3247,18 @@ async function loadUsersView() {
       <div class="users-row">
         <div class="user-info">
           <div class="user-avatar-sm" style="background:${p.pending?'var(--text-3)':'var(--accent)'}">${(p.full_name||p.email||'?').charAt(0).toUpperCase()}</div>
-          <div><div class="user-name-text">${p.full_name||'—'} ${p.pending?'<span style="font-size:10px;color:var(--text-3)">(pendente)</span>':''}</div></div>
+          <div><div class="user-name-text">${esc(p.full_name||'—')} ${p.pending?'<span style="font-size:10px;color:var(--text-3)">(pendente)</span>':''}</div></div>
         </div>
-        <div style="font-size:12px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.email||'—'}</div>
+        <div style="font-size:12px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.email||'—')}</div>
         <div>
-          <select onchange="updateUserRole('${p.user_id||''}','${p.email}',this.value)" style="font-family:var(--font);font-size:12px;border:1px solid var(--border-md);border-radius:6px;padding:4px 8px;background:var(--bg-card);color:var(--text)" ${p.user_id===currentUser.id?'disabled':''}>
+          <select onchange="updateUserRole(${jsArg(p.user_id)},${jsArg(p.email)},this.value)" style="font-family:var(--font);font-size:12px;border:1px solid var(--border-md);border-radius:6px;padding:4px 8px;background:var(--bg-card);color:var(--text)" ${p.user_id===currentUser.id?'disabled':''}>
             <option value="admin" ${p.role==='admin'?'selected':''}>Admin</option>
             <option value="editor" ${p.role==='editor'?'selected':''}>Editor</option>
             <option value="viewer" ${p.role==='viewer'?'selected':''}>Viewer</option>
           </select>
         </div>
         <div>
-          ${p.user_id !== currentUser.id ? `<button onclick="removeUser('${p.user_id||''}','${p.email||''}')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:4px;border-radius:5px;display:flex;align-items:center" title="Remover"><i class="ti ti-trash"></i></button>` : '<span style="font-size:11px;color:var(--text-3)">Você</span>'}
+          ${p.user_id !== currentUser.id ? `<button onclick="removeUser(${jsArg(p.user_id)},${jsArg(p.email)})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:4px;border-radius:5px;display:flex;align-items:center" title="Remover"><i class="ti ti-trash"></i></button>` : '<span style="font-size:11px;color:var(--text-3)">Você</span>'}
         </div>
       </div>`).join('');
   } catch(e) {
@@ -3324,7 +3330,7 @@ function toggleMyActsFilter() {
     if (!showMine) {
       // populate users
       userSelect.innerHTML = '<option value="">Todos os usuários</option>' +
-        crmUsers.map(u => `<option value="${u}">${u}</option>`).join('');
+        crmUsers.map(u => `<option value="${esc(u)}">${esc(u)}</option>`).join('');
     }
   }
   renderAllActivities();
@@ -3358,7 +3364,7 @@ function populateContactSegmentSelect(selected) {
   if (!el) return;
   const opts = getOpts('segmentos_contato');
   el.innerHTML = '<option value="">Selecione...</option>' +
-    opts.map(o => `<option value="${o}" ${o===selected?'selected':''}>${o}</option>`).join('');
+    opts.map(o => `<option value="${esc(o)}" ${o===selected?'selected':''}>${esc(o)}</option>`).join('');
 }
 
 // ── INLINE EDIT ──
@@ -3390,7 +3396,7 @@ function inlineEditOwner(dealId, el) {
   el.classList.add('editing');
   const d = deals.find(x=>x.id===dealId); if(!d) return;
   const valEl = el.querySelector('.info-val');
-  valEl.innerHTML = `<select class="inline-edit-input"><option value="">—</option>${crmUsers.map(u=>`<option value="${u}" ${u===d.owner?'selected':''}>${u}</option>`).join('')}</select>`;
+  valEl.innerHTML = `<select class="inline-edit-input"><option value="">—</option>${crmUsers.map(u=>`<option value="${esc(u)}" ${u===d.owner?'selected':''}>${esc(u)}</option>`).join('')}</select>`;
   const sel = valEl.querySelector('select'); sel.focus();
   const save = async () => { d.owner=sel.value; el.classList.remove('editing'); renderDetail(d); await saveDeal(d); };
   sel.addEventListener('blur', save); sel.addEventListener('change', save);
@@ -3401,7 +3407,7 @@ function inlineEditSelect(dealId, field, opts, el) {
   el.classList.add('editing');
   const d = deals.find(x=>x.id===dealId); if(!d) return;
   const valEl = el.querySelector('.info-val');
-  valEl.innerHTML = `<select class="inline-edit-input"><option value="">—</option>${opts.map(o=>`<option value="${o}" ${o===d[field]?'selected':''}>${o}</option>`).join('')}</select>`;
+  valEl.innerHTML = `<select class="inline-edit-input"><option value="">—</option>${opts.map(o=>`<option value="${esc(o)}" ${o===d[field]?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
   const sel = valEl.querySelector('select'); sel.focus();
   const save = async () => { d[field]=sel.value; el.classList.remove('editing'); renderDetail(d); await saveDeal(d); };
   sel.addEventListener('blur', save); sel.addEventListener('change', save);
@@ -3412,7 +3418,7 @@ function inlineEditState(dealId, el) {
   el.classList.add('editing');
   const d = deals.find(x=>x.id===dealId); if(!d) return;
   const valEl = el.querySelector('.info-val');
-  valEl.innerHTML = `<select class="inline-edit-input"><option value="">—</option>${UFS.map(uf=>`<option value="${uf}" ${uf===d.state?'selected':''}>${uf}</option>`).join('')}</select>`;
+  valEl.innerHTML = `<select class="inline-edit-input"><option value="">—</option>${UFS.map(uf=>`<option value="${esc(uf)}" ${uf===d.state?'selected':''}>${esc(uf)}</option>`).join('')}</select>`;
   const sel = valEl.querySelector('select'); sel.focus();
   sel.addEventListener('change', async () => { d.state=sel.value; d.city=''; el.classList.remove('editing'); renderDetail(d); await saveDeal(d); });
   sel.addEventListener('blur', () => { el.classList.remove('editing'); renderDetail(d); });
@@ -3429,7 +3435,7 @@ async function inlineEditCity(dealId, el) {
   try {
     const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${d.state}/municipios?orderBy=nome`);
     const data = await res.json();
-    sel.innerHTML = `<option value="">—</option>${data.map(c=>`<option value="${c.nome}" ${c.nome===d.city?'selected':''}>${c.nome}</option>`).join('')}`;
+    sel.innerHTML = `<option value="">—</option>${data.map(c=>`<option value="${esc(c.nome)}" ${c.nome===d.city?'selected':''}>${esc(c.nome)}</option>`).join('')}`;
     sel.focus();
   } catch(e) { sel.innerHTML='<option>Erro</option>'; }
   const save = async () => { d.city=sel.value; el.classList.remove('editing'); renderDetail(d); await saveDeal(d); };
